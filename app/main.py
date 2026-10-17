@@ -19,7 +19,9 @@ Environment:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
+import re
 import logging
 import os
 from typing import Any, Awaitable, Callable
@@ -33,6 +35,19 @@ from . import service as svc
 from .models import AuditIn, LinksIn, MarkdownIn, PdfIn, TechIn
 
 log = logging.getLogger('webapi')
+class _RedactQuery(logging.Filter):
+    """Keep credentials passed as query params out of uvicorn's access log."""
+    _rx = re.compile(r'(?i)([?&](?:apimarket[_-]secret|x-apimarket-secret|x-api-market-secret|api_?key|key|secret|token)=)[^&\s"]*')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and len(record.args) >= 3 and isinstance(record.args[2], str):
+            a = list(record.args)
+            a[2] = self._rx.sub(r'\1[redacted]', a[2])
+            record.args = tuple(a)
+        return True
+
+
+logging.getLogger('uvicorn.access').addFilter(_RedactQuery())
 if not log.handlers:  # uvicorn only configures its own loggers; make ours visible in Render logs
     _h = logging.StreamHandler()
     _h.setFormatter(logging.Formatter('%(levelname)s:     %(name)s %(message)s'))
@@ -105,10 +120,19 @@ def _log_401(request: Request) -> None:
                 matches.append(name)
             elif expected in v:
                 contains.append(name)
-    log.warning('auth 401 %s %s ua=%r headers=%s query=%s apimarket_secret_match=%s apimarket_secret_substring=%s',
+    # Non-reversible fingerprints (length, 8-hex sha256 prefix, shape flags) of the candidate credential headers,
+    # so a wrong/masked/placeholder value can be told apart from a missing one without logging any value.
+    def fp(v: str) -> str:
+        c = _clean(v)
+        shape = ('masked' if c and set(c) <= set('*\u2022x.') else
+                 'apim_prefix' if c.startswith('apim_') else 'other')
+        return f'len={len(v)}/clean={len(c)} sha8={hashlib.sha256(c.encode()).hexdigest()[:8]} {shape}'
+    seen = {h: fp(request.headers[h]) for h in APIMARKET_HEADERS if h in request.headers}
+    log.warning('auth 401 %s %s ua=%r headers=%s query=%s apimarket_secret_match=%s apimarket_secret_substring=%s '
+                'candidates=%s expected=len=%d sha8=%s',
                 request.method, request.url.path, (request.headers.get('user-agent') or '')[:80],
                 sorted({k.lower() for k in request.headers.keys()}), sorted(set(request.query_params.keys())),
-                matches, contains)
+                matches, contains, seen, len(expected), hashlib.sha256(expected.encode()).hexdigest()[:8])
 
 
 async def marketplace_auth(request: Request,

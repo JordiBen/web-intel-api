@@ -176,3 +176,12 @@ def test_get_missing_required_uses_example():
     from app.models import MarkdownIn, PdfIn, UrlIn
     for m in (MarkdownIn, PdfIn, UrlIn):
         assert m.model_fields['url'].examples
+
+
+def test_access_log_redacts_query_secret():
+    import logging
+    from app.main import _RedactQuery
+    r = logging.LogRecord('uvicorn.access', logging.INFO, '', 0, '%s - "%s %s HTTP/%s" %d',
+                          ('1.2.3.4', 'POST', '/v1/x?api_key=SECRET&url=a&Token=T2', '1.1', 200), None)
+    _RedactQuery().filter(r)
+    assert 'SECRET' not in r.getMessage() and 'T2' not in r.getMessage() and 'url=a' in r.getMessage()
