@@ -15,7 +15,7 @@ live = pytest.mark.skipif(os.environ.get('LIVE') != '1', reason='set LIVE=1 for 
 
 
 def test_meta():
-    assert c.get('/healthz').json()['status'] == 'ok'
+    assert c.get('/health').json()['status'] == 'ok'
     paths = c.get('/openapi.json').json()['paths']
     for path, *_ in TOOLS.values():
         assert f'/v1{path}' in paths and f'/x402/v1{path}' in paths

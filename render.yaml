@@ -4,7 +4,7 @@ services:
     name: web-intel-api
     runtime: docker
     plan: free
-    healthCheckPath: /healthz
+    healthCheckPath: /health
     envVars:
       - key: RAPIDAPI_PROXY_SECRET
         sync: false          # paste from RapidAPI > Gateway > Proxy secret

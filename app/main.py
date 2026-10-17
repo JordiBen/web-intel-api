@@ -110,7 +110,8 @@ def create_app() -> FastAPI:
     async def root() -> RedirectResponse:
         return RedirectResponse('/docs')
 
-    @app.get('/healthz', tags=['meta'])
+    @app.get('/health', tags=['meta'])
+    @app.get('/healthz', include_in_schema=False)
     async def healthz() -> dict:
         return {'status': 'ok', 'version': VERSION}
 
