@@ -22,10 +22,20 @@ def test_meta():
     assert set(c.get('/pricing').json()['x402']) == set(TOOLS)
 
 
-@pytest.mark.parametrize('headers', [{}, {'X-RapidAPI-Proxy-Secret': 'wrong'}, {'X-API-Key': 'nope'}])
+@pytest.mark.parametrize('headers', [{}, {'X-RapidAPI-Proxy-Secret': 'wrong'}, {'X-API-Key': 'nope'},
+                                     {'X-Zyla-Secret': 'wrong'}, {'X-ApiMarket-Secret': 'wrong'},
+                                     {'X-ApiMarket-Secret': 'test-zyla-secret'}])
 def test_marketplace_auth_rejects(headers):
     r = c.post('/v1/markdown', json={'url': 'https://example.com'}, headers=headers)
     assert r.status_code == 401
+
+
+@pytest.mark.parametrize('headers', [RAPID, {'X-Zyla-Secret': 'test-zyla-secret'},
+                                     {'X-ApiMarket-Secret': 'test-apimarket-secret'}, {'X-API-Key': 'k1'}])
+def test_marketplace_auth_accepts_each_channel(headers):
+    # Auth passes, then the SSRF guard answers 422 without touching the network.
+    r = c.post('/v1/markdown', json={'url': 'http://127.0.0.1/'}, headers=headers)
+    assert r.status_code == 422, r.text
 
 
 def test_validation_and_ssrf_guard():

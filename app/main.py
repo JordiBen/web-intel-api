@@ -6,7 +6,9 @@
 
 Environment:
   RAPIDAPI_PROXY_SECRET   secret RapidAPI adds as X-RapidAPI-Proxy-Secret (blocks calls that bypass the marketplace)
-  ZYLA_SECRET             optional; same idea for Zyla (header X-Zyla-Secret)
+  ZYLA_SECRET             optional; same idea for Zyla (header X-Zyla-Secret, set under Zyla > Access Control)
+  APIMARKET_SECRET        optional; same idea for API.market (header X-ApiMarket-Secret, set as the
+                          API Source "API Key" auth or a custom header in the API.market Seller Console)
   API_KEYS                optional comma-separated keys accepted in X-API-Key (direct customers / monitoring)
   X402_PAY_TO             EVM address that receives USDC. If unset the /x402 routes are not mounted.
   X402_NETWORK            eip155:8453 (Base mainnet, default) or eip155:84532 (Base Sepolia testnet)
@@ -50,17 +52,21 @@ def _secret_ok(given: str | None, expected: str | None) -> bool:
 
 async def marketplace_auth(x_rapidapi_proxy_secret: str | None = Header(None, include_in_schema=False),
                            x_zyla_secret: str | None = Header(None, include_in_schema=False),
+                           x_apimarket_secret: str | None = Header(None, include_in_schema=False),
                            x_api_key: str | None = Header(None, include_in_schema=False)) -> str:
     if _secret_ok(x_rapidapi_proxy_secret, os.environ.get('RAPIDAPI_PROXY_SECRET')):
         return 'rapidapi'
     if _secret_ok(x_zyla_secret, os.environ.get('ZYLA_SECRET')):
         return 'zyla'
+    if _secret_ok(x_apimarket_secret, os.environ.get('APIMARKET_SECRET')):
+        return 'apimarket'
     keys = [k.strip() for k in os.environ.get('API_KEYS', '').split(',') if k.strip()]
     if x_api_key and any(_secret_ok(x_api_key, k) for k in keys):
         return 'direct'
     if os.environ.get('DEV_OPEN_ACCESS') == '1':
         return 'dev'
-    msg = 'Missing or invalid credentials. Subscribe on RapidAPI (search "Web Intelligence API").'
+    msg = ('Missing or invalid credentials. Subscribe to "Web Intelligence API" on an API marketplace '
+           '(RapidAPI, Zyla API Hub or API.market) and call it through the marketplace.')
     if os.environ.get('X402_PAY_TO'):
         msg += ' Or pay per call with x402 at /x402/v1/*.'
     raise HTTPException(401, msg + ' See /docs.')
@@ -122,7 +128,7 @@ def create_app() -> FastAPI:
     async def pricing() -> dict:
         return {'x402': {n: {'path': f'/x402/v1{t[0]}', 'priceUsd': t[3], 'network': os.environ.get('X402_NETWORK', 'eip155:8453'),
                              'asset': 'USDC'} for n, t in TOOLS.items()},
-                'marketplaces': ['RapidAPI (subscription plans)']}
+                'marketplaces': ['RapidAPI', 'Zyla API Hub', 'API.market']}
 
     app.include_router(_make_router('/v1', [Depends(marketplace_auth)]))
 
