@@ -3,3 +3,7 @@ __pycache__/
 .env
 .pytest_cache/
 .secrets.local
+
+# Internal notes (keep local, never publish)
+rapidapi/BROWSER_STEPS.md
+rapidapi/proxy_secret.txt
