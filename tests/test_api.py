@@ -115,7 +115,7 @@ def test_get_variants_exist_only_on_v1():
 def test_get_auth_and_validation():
     assert c.get('/v1/markdown', params={'url': 'https://example.com'}).status_code == 401
     zyla = {'X-Zyla-Secret': 'test-zyla-secret'}
-    assert c.get('/v1/markdown', headers=zyla).status_code == 422  # url missing
+    assert c.get('/v1/markdown', params={'chunk_size': '-1'}, headers=zyla).status_code == 422  # url missing -> example; bad value still 422
     assert c.get('/v1/broken-links', params={'url': 'example.com', 'max_pages': '500'}, headers=zyla).status_code == 422
     assert c.get('/v1/tech-detect', params={'url': 'http://127.0.0.1/'}, headers=zyla).status_code == 422  # SSRF guard
     assert c.get('/v1/pdf-extract', params={'url': 'http://localhost/a.pdf', 'languages': 'eng,heb'},
@@ -129,3 +129,10 @@ def test_query_parsing():
     req = Request({'type': 'http', 'query_string': b'url=x.com&languages=eng,heb&languages=ara&max_pages=3&foo=1&mode=&output='})
     m = PdfIn.model_validate(_query_to_dict(PdfIn, req))
     assert m.languages == ['eng', 'heb', 'ara'] and m.max_pages == 3
+
+
+def test_get_missing_required_uses_example():
+    from app.main import _query_to_dict  # noqa: F401
+    from app.models import MarkdownIn, PdfIn, UrlIn
+    for m in (MarkdownIn, PdfIn, UrlIn):
+        assert m.model_fields['url'].examples

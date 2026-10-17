@@ -67,8 +67,8 @@ async def marketplace_auth(x_rapidapi_proxy_secret: str | None = Header(None, in
         return 'direct'
     if os.environ.get('DEV_OPEN_ACCESS') == '1':
         return 'dev'
-    msg = ('Missing or invalid credentials. Subscribe to "Web Intelligence API" on an API marketplace '
-           '(RapidAPI, Zyla API Hub or API.market) and call it through the marketplace.')
+    msg = ('Missing or invalid credentials. Subscribe to "Web Intelligence API" on the API marketplace '
+           'where you found it and call it through that marketplace.')
     if os.environ.get('X402_PAY_TO'):
         msg += ' Or pay per call with x402 at /x402/v1/*.'
     raise HTTPException(401, msg + ' See /docs.')
@@ -115,7 +115,11 @@ def _query_to_dict(model: type, request: Request) -> dict:
 def _bind_get(model: type, handler: Callable[[Any], Awaitable[dict]]):
     async def endpoint(request: Request) -> dict:
         try:
-            body = model.model_validate(_query_to_dict(model, request))
+            data = _query_to_dict(model, request)
+            for k, f in model.model_fields.items():  # bare GET (e.g. a marketplace reachability probe) -> run the documented example
+                if f.is_required() and k not in data and f.examples:
+                    data[k] = f.examples[0]
+            body = model.model_validate(data)
         except ValidationError as e:
             raise RequestValidationError(e.errors()) from e
         try:
