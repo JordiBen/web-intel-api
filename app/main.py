@@ -23,6 +23,8 @@ import os
 from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from . import service as svc
@@ -72,7 +74,7 @@ async def marketplace_auth(x_rapidapi_proxy_secret: str | None = Header(None, in
     raise HTTPException(401, msg + ' See /docs.')
 
 
-def _make_router(prefix: str, deps: list) -> APIRouter:
+def _make_router(prefix: str, deps: list, with_get: bool = False) -> APIRouter:
     r = APIRouter(prefix=prefix, dependencies=deps)
     for name, (path, model, handler, _price, summary) in TOOLS.items():
         def bind(model=model, handler=handler):
@@ -85,7 +87,60 @@ def _make_router(prefix: str, deps: list) -> APIRouter:
             return endpoint
         r.add_api_route(path, bind(), methods=['POST'], name=f'{prefix}:{name}', summary=summary,
                         tags=['x402 pay-per-call' if 'x402' in prefix else 'tools'])
+        if with_get:
+            r.add_api_route(path, _bind_get(model, handler), methods=['GET'], name=f'{prefix}:{name}:get',
+                            summary=summary + ' (query parameters)', tags=['tools (GET)'],
+                            openapi_extra={'parameters': _query_params(model)})
     return r
+
+
+def _query_to_dict(model: type, request: Request) -> dict:
+    """Query string -> model input. List fields accept repeated keys or a comma-separated value."""
+    out: dict[str, Any] = {}
+    fields = model.model_fields
+    for key in request.query_params.keys():
+        if key not in fields:
+            continue
+        values = request.query_params.getlist(key)
+        ann = str(fields[key].annotation)
+        if ann.startswith('list'):
+            out[key] = [v.strip() for x in values for v in x.split(',') if v.strip()]
+        else:
+            out[key] = values[-1]
+    return out
+
+
+def _bind_get(model: type, handler: Callable[[Any], Awaitable[dict]]):
+    async def endpoint(request: Request) -> dict:
+        try:
+            body = model.model_validate(_query_to_dict(model, request))
+        except ValidationError as e:
+            raise RequestValidationError(e.errors()) from e
+        try:
+            return await handler(body)
+        except svc.UserInputError as e:
+            raise HTTPException(422, str(e)) from e
+    return endpoint
+
+
+def _query_params(model: type) -> list[dict]:
+    schema = model.model_json_schema()
+    req = set(schema.get('required', []))
+    params = []
+    for k, v in schema['properties'].items():
+        t = v.get('type') or 'string'
+        if 'enum' in v or 'anyOf' in v:
+            t = 'string'
+        sch: dict[str, Any] = {'type': 'string' if t == 'array' else t}
+        if 'enum' in v:
+            sch['enum'] = v['enum']
+        if 'default' in v:
+            sch['default'] = ','.join(v['default']) if isinstance(v['default'], list) else v['default']
+        desc = v.get('description', k.replace('_', ' '))
+        if t == 'array':
+            desc += ' (comma-separated)'
+        params.append({'name': k, 'in': 'query', 'required': k in req, 'description': desc, 'schema': sch})
+    return params
 
 
 def _x402_routes(pay_to: str, network: str, base: str) -> dict:
@@ -130,7 +185,7 @@ def create_app() -> FastAPI:
                              'asset': 'USDC'} for n, t in TOOLS.items()},
                 'marketplaces': ['RapidAPI', 'Zyla API Hub', 'API.market']}
 
-    app.include_router(_make_router('/v1', [Depends(marketplace_auth)]))
+    app.include_router(_make_router('/v1', [Depends(marketplace_auth)], with_get=True))  # GET for Zyla (no bodies); never on /x402 (payment is POST-only)
 
     pay_to = os.environ.get('X402_PAY_TO')
     if pay_to:
