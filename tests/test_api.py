@@ -30,6 +30,46 @@ def test_marketplace_auth_rejects(headers):
     assert r.status_code == 401
 
 
+AM = 'test-apimarket-secret'
+
+
+@pytest.mark.parametrize('headers,params', [
+    ({'x-apimarket-secret': AM}, {}), ({'X-Api-Market-Secret': AM}, {}), ({'X-ApiMarket-Secret': f'  {AM}\t'}, {}),
+    ({'Authorization': f'Bearer {AM}'}, {}), ({'Authorization': AM}, {}), ({'X-API-Key': f' {AM} '}, {}),
+    ({'Authorization': 'Basic ' + base64.b64encode(f'apimarket:{AM}'.encode()).decode()}, {}),
+    ({}, {'api_key': AM}), ({}, {'apimarket_secret': f' {AM} '}), ({}, {'Token': AM}),
+])
+def test_apimarket_secret_accepted_anywhere(headers, params):
+    r = c.post('/v1/markdown', json={'url': 'http://127.0.0.1/'}, headers=headers, params=params)
+    assert r.status_code == 422, r.text
+
+
+@pytest.mark.parametrize('headers,params', [
+    ({'Authorization': 'Bearer test-zyla-secret'}, {}), ({'X-API-Key': 'test-proxy-secret'}, {}),
+    ({'X-Zyla-Secret': f' test-zyla-secret '}, {}),  # other marketplaces stay exact
+    ({'X-Api-Market-Key': AM}, {}),  # customer key header is not a backend credential
+    ({}, {'url': AM}), ({'X-ApiMarket-Secret': AM[:-1]}, {}),
+])
+def test_apimarket_rejects(headers, params):
+    r = c.post('/v1/markdown', json={'url': 'http://127.0.0.1/'}, headers=headers, params=params)
+    assert r.status_code == 401
+
+
+def test_401_log_names_only(caplog):
+    import logging
+    lg = logging.getLogger('webapi')
+    lg.propagate = True
+    try:
+        with caplog.at_level(logging.WARNING, logger='webapi'):
+            c.post('/v1/markdown', json={'url': 'https://example.com'},
+                   headers={'X-Weird-Header': f'"{AM}"', 'X-Other': f'pre-{AM}-post'}, params={'foo': 'bar'})
+    finally:
+        lg.propagate = False
+    text = caplog.text
+    assert AM not in text
+    assert "'header:x-weird-header'" in text and "'header:x-other'" in text and "'foo'" in text and 'bar' not in text
+
+
 @pytest.mark.parametrize('headers', [RAPID, {'X-Zyla-Secret': 'test-zyla-secret'},
                                      {'X-ApiMarket-Secret': 'test-apimarket-secret'}, {'X-API-Key': 'k1'}])
 def test_marketplace_auth_accepts_each_channel(headers):

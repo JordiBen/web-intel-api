@@ -7,8 +7,9 @@
 Environment:
   RAPIDAPI_PROXY_SECRET   secret RapidAPI adds as X-RapidAPI-Proxy-Secret (blocks calls that bypass the marketplace)
   ZYLA_SECRET             optional; same idea for Zyla (header X-Zyla-Secret, set under Zyla > Access Control)
-  APIMARKET_SECRET        optional; same idea for API.market (header X-ApiMarket-Secret, set as the
-                          API Source "API Key" auth or a custom header in the API.market Seller Console)
+  APIMARKET_SECRET        optional; same idea for API.market. Accepted (whitespace-stripped) in X-ApiMarket-Secret,
+                          X-Api-Market-Secret, X-API-Key, Authorization (Bearer/raw/Basic password) or a query param
+                          (apimarket_secret, api_key, key, secret, token). 401s log header/param NAMES only.
   API_KEYS                optional comma-separated keys accepted in X-API-Key (direct customers / monitoring)
   X402_PAY_TO             EVM address that receives USDC. If unset the /x402 routes are not mounted.
   X402_NETWORK            eip155:8453 (Base mainnet, default) or eip155:84532 (Base Sepolia testnet)
@@ -32,6 +33,12 @@ from . import service as svc
 from .models import AuditIn, LinksIn, MarkdownIn, PdfIn, TechIn
 
 log = logging.getLogger('webapi')
+if not log.handlers:  # uvicorn only configures its own loggers; make ours visible in Render logs
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter('%(levelname)s:     %(name)s %(message)s'))
+    log.addHandler(_h)
+    log.setLevel(logging.INFO)
+    log.propagate = False
 VERSION = '1.0.0'
 
 # name -> (path, request model, handler, x402 price USD, summary)
@@ -53,21 +60,76 @@ def _secret_ok(given: str | None, expected: str | None) -> bool:
     return bool(given and expected and hmac.compare_digest(given.encode(), expected.encode()))
 
 
-async def marketplace_auth(x_rapidapi_proxy_secret: str | None = Header(None, include_in_schema=False),
+# API.market: the gateway auth can be configured as "API Key" (any header name), "Bearer Token",
+# "Basic Auth" or "Query Param" (docs.api.market/seller-docs/importing-an-api-source). They document no
+# fixed proxy-secret header, so accept the secret wherever a reasonable configuration would put it.
+APIMARKET_HEADERS = ('x-apimarket-secret', 'x-api-market-secret', 'x-api-key', 'authorization')
+APIMARKET_QUERY = ('apimarket_secret', 'apimarket-secret', 'x-apimarket-secret', 'x-api-market-secret',
+                   'api_key', 'apikey', 'key', 'secret', 'token')
+
+
+def _clean(value: str) -> str:
+    v = value.strip().strip('"\'').strip()
+    low = v.lower()
+    if low.startswith('bearer '):
+        v = v[7:].strip()
+    elif low.startswith('basic '):
+        import base64
+        try:
+            raw = base64.b64decode(v[6:].strip(), validate=True).decode()
+            v = raw.split(':', 1)[1] if ':' in raw else raw  # password (or the whole value) carries the secret
+        except Exception:  # noqa: BLE001
+            pass
+    return v.strip()
+
+
+def _apimarket_ok(request: Request, expected: str | None) -> bool:
+    expected = (expected or '').strip()
+    if not expected:
+        return False
+    candidates = [request.headers.get(h) for h in APIMARKET_HEADERS]
+    lower_q = {k.lower(): k for k in request.query_params.keys()}
+    candidates += [request.query_params.get(lower_q[q]) for q in APIMARKET_QUERY if q in lower_q]
+    return any(c and _secret_ok(_clean(c), expected) for c in candidates)
+
+
+def _log_401(request: Request) -> None:
+    """Names only - never values. Says under which name(s) the expected API.market secret arrived, if at all."""
+    expected = (os.environ.get('APIMARKET_SECRET') or '').strip()
+    matches, contains = [], []
+    if expected:
+        items = [('header:' + k.lower(), v) for k, v in request.headers.items()]
+        items += [('query:' + k, v) for k, v in request.query_params.multi_items()]
+        for name, v in items:
+            if _secret_ok(_clean(v), expected):
+                matches.append(name)
+            elif expected in v:
+                contains.append(name)
+    log.warning('auth 401 %s %s ua=%r headers=%s query=%s apimarket_secret_match=%s apimarket_secret_substring=%s',
+                request.method, request.url.path, (request.headers.get('user-agent') or '')[:80],
+                sorted({k.lower() for k in request.headers.keys()}), sorted(set(request.query_params.keys())),
+                matches, contains)
+
+
+async def marketplace_auth(request: Request,
+                           x_rapidapi_proxy_secret: str | None = Header(None, include_in_schema=False),
                            x_zyla_secret: str | None = Header(None, include_in_schema=False),
-                           x_apimarket_secret: str | None = Header(None, include_in_schema=False),
                            x_api_key: str | None = Header(None, include_in_schema=False)) -> str:
     if _secret_ok(x_rapidapi_proxy_secret, os.environ.get('RAPIDAPI_PROXY_SECRET')):
         return 'rapidapi'
     if _secret_ok(x_zyla_secret, os.environ.get('ZYLA_SECRET')):
         return 'zyla'
-    if _secret_ok(x_apimarket_secret, os.environ.get('APIMARKET_SECRET')):
+    if _apimarket_ok(request, os.environ.get('APIMARKET_SECRET')):
         return 'apimarket'
     keys = [k.strip() for k in os.environ.get('API_KEYS', '').split(',') if k.strip()]
     if x_api_key and any(_secret_ok(x_api_key, k) for k in keys):
         return 'direct'
     if os.environ.get('DEV_OPEN_ACCESS') == '1':
         return 'dev'
+    try:
+        _log_401(request)
+    except Exception:  # noqa: BLE001 - diagnostics must never break auth
+        log.exception('401 diagnostics failed')
     msg = ('Missing or invalid credentials. Subscribe to "Web Intelligence API" on the API marketplace '
            'where you found it and call it through that marketplace.')
     if os.environ.get('X402_PAY_TO'):
