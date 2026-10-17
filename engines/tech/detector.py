@@ -202,11 +202,52 @@ def extract_signals_from_html(html: str) -> dict[str, Any]:
     return {'soup': soup, 'scriptSrc': script_src, 'scripts': scripts, 'meta': meta, 'text': text}
 
 
+# ---- DOM selector prefilter: skip soup.select() when a selector needs an id/class/attribute/tag absent from the page.
+_SEL_UNSAFE = re.compile(r'[\\]|:(?:not|has|is|where|matches|-soup-contains)\(', re.I)
+_SEL_ATTR = re.compile(r'\[\s*([\w:-]+)')
+_SEL_QUOTED = re.compile(r'"[^"]*"|\'[^\']*\'|\[[^\]]*\]|\([^)]*\)')
+_SEL_ID = re.compile(r'#([\w-]+)')
+_SEL_CLASS = re.compile(r'\.([\w-]+)')
+_SEL_TAG = re.compile(r'(?:^|[\s>+~])([a-zA-Z][\w-]*)')
+_SEL_ATTR_VAL = re.compile(r'\[\s*[\w:-]+\s*[*^$|~]?=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s\]]+))')
+
+
+def build_dom_index(soup: Any, raw_html: str = '') -> dict[str, Any]:
+    idx: dict[str, Any] = {'tag': set(), 'id': set(), 'class': set(), 'attr': set(), 'html': raw_html.lower()}
+    for el in soup.find_all(True):
+        idx['tag'].add(el.name.lower())
+        for k, v in el.attrs.items():
+            idx['attr'].add(k.lower())
+            if k == 'id' and isinstance(v, str):
+                idx['id'].add(v)
+            elif k == 'class':
+                idx['class'].update(v if isinstance(v, list) else str(v).split())
+    return idx
+
+
+def selector_may_match(sel: str, idx: dict[str, set[str]]) -> bool:
+    """Conservative: False only if every comma-part needs a token the document lacks."""
+    if _SEL_UNSAFE.search(sel) or '(' in sel or re.search(r'["\'][^"\']*,[^"\']*["\']', sel):
+        return True  # complex selector or comma inside a quoted value: don't guess
+    for part in sel.split(','):
+        attrs = {a.lower() for a in _SEL_ATTR.findall(part)}
+        bare = _SEL_QUOTED.sub(' ', part)
+        ids, classes = set(_SEL_ID.findall(bare)), set(_SEL_CLASS.findall(bare))
+        tags = {t.lower() for t in _SEL_TAG.findall(_SEL_ID.sub(' ', _SEL_CLASS.sub(' ', bare)))}
+        # attribute values must occur literally in the raw HTML (skip values that could be entity-encoded)
+        vals = [next(g for g in m if g) for m in _SEL_ATTR_VAL.findall(part) if any(m)]
+        vals_ok = all(v.lower() in idx['html'] for v in vals if not set(v) & set('&<>"\''))
+        if vals_ok and attrs <= idx['attr'] and ids <= idx['id'] and classes <= idx['class'] and tags <= idx['tag']:
+            return True
+    return False
+
+
 def detect(fp: Fingerprints, sig: PageSignals) -> list[dict[str, Any]]:
     parsed = extract_signals_from_html(sig.html)
     soup = parsed['soup']
     html = sig.html[:HTML_SCAN_LIMIT]
     found: dict[str, dict[str, Any]] = {}
+    dom_idx = build_dom_index(soup, sig.html) if soup is not None else None
 
     def hit(name: str, p: Pattern, m: re.Match | None, via: str) -> None:
         cur = found.setdefault(name, {'confidence': 0, 'version': None, 'via': set()})
@@ -258,6 +299,8 @@ def detect(fp: Fingerprints, sig: PageSignals) -> list[dict[str, Any]]:
             if sig.dns.get(rtype):
                 match_any(pats, sig.dns[rtype], t.name, 'dns')
         for sel, spec in t.dom:
+            if dom_idx is None or not selector_may_match(sel, dom_idx):
+                continue
             try:
                 els = soup.select(sel, limit=5)
             except Exception:  # noqa: BLE001 - selector unsupported by soupsieve

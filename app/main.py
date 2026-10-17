@@ -60,7 +60,10 @@ async def marketplace_auth(x_rapidapi_proxy_secret: str | None = Header(None, in
         return 'direct'
     if os.environ.get('DEV_OPEN_ACCESS') == '1':
         return 'dev'
-    raise HTTPException(401, 'Subscribe on RapidAPI, or pay per call via x402 at /x402/v1/*. See /docs.')
+    msg = 'Missing or invalid credentials. Subscribe on RapidAPI (search "Web Intelligence API").'
+    if os.environ.get('X402_PAY_TO'):
+        msg += ' Or pay per call with x402 at /x402/v1/*.'
+    raise HTTPException(401, msg + ' See /docs.')
 
 
 def _make_router(prefix: str, deps: list) -> APIRouter:
