@@ -126,6 +126,6 @@ def test_query_parsing():
     from starlette.requests import Request
     from app.main import _query_to_dict
     from app.models import PdfIn
-    req = Request({'type': 'http', 'query_string': b'url=x.com&languages=eng,heb&languages=ara&max_pages=3&foo=1'})
+    req = Request({'type': 'http', 'query_string': b'url=x.com&languages=eng,heb&languages=ara&max_pages=3&foo=1&mode=&output='})
     m = PdfIn.model_validate(_query_to_dict(PdfIn, req))
     assert m.languages == ['eng', 'heb', 'ara'] and m.max_pages == 3

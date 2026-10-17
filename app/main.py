@@ -101,7 +101,9 @@ def _query_to_dict(model: type, request: Request) -> dict:
     for key in request.query_params.keys():
         if key not in fields:
             continue
-        values = request.query_params.getlist(key)
+        values = [v for v in request.query_params.getlist(key) if v.strip()]  # empty optional inputs -> default
+        if not values:
+            continue
         ann = str(fields[key].annotation)
         if ann.startswith('list'):
             out[key] = [v.strip() for x in values for v in x.split(',') if v.strip()]
