@@ -185,3 +185,14 @@ def test_access_log_redacts_query_secret():
                           ('1.2.3.4', 'POST', '/v1/x?api_key=SECRET&url=a&Token=T2', '1.1', 200), None)
     _RedactQuery().filter(r)
     assert 'SECRET' not in r.getMessage() and 'T2' not in r.getMessage() and 'url=a' in r.getMessage()
+
+
+def test_apimarket_alt_sha256_pin(monkeypatch):
+    import hashlib
+    pinned = 'x' * 40
+    hdr = {'X-ApiMarket-Secret': pinned}
+    body = {'url': 'http://127.0.0.1/'}
+    assert c.post('/v1/markdown', json=body, headers=hdr).status_code == 401  # disabled by default
+    monkeypatch.setenv('APIMARKET_SECRET_ALT_SHA256', hashlib.sha256(pinned.encode()).hexdigest())
+    assert c.post('/v1/markdown', json=body, headers=hdr).status_code == 422
+    assert c.post('/v1/markdown', json=body, headers={'X-ApiMarket-Secret': 'y' * 40}).status_code == 401

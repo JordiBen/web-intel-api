@@ -105,7 +105,13 @@ def _apimarket_ok(request: Request, expected: str | None) -> bool:
     candidates = [request.headers.get(h) for h in APIMARKET_HEADERS]
     lower_q = {k.lower(): k for k in request.query_params.keys()}
     candidates += [request.query_params.get(lower_q[q]) for q in APIMARKET_QUERY if q in lower_q]
-    return any(c and _secret_ok(_clean(c), expected) for c in candidates)
+    if any(c and _secret_ok(_clean(c), expected) for c in candidates):
+        return True
+    # Optional pinned second credential, stored only as its SHA-256 hex digest (never the value), for a gateway
+    # that keeps sending one fixed value we cannot change. Unset = disabled.
+    alt = (os.environ.get('APIMARKET_SECRET_ALT_SHA256') or '').strip().lower()
+    return bool(alt) and any(c and len(_clean(c)) >= 32 and hmac.compare_digest(
+        hashlib.sha256(_clean(c).encode()).hexdigest(), alt) for c in candidates)
 
 
 def _log_401(request: Request) -> None:
