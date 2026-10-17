@@ -1,0 +1,20 @@
+# Render Blueprint: free web service built from this repo's Dockerfile.
+services:
+  - type: web
+    name: web-intel-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: RAPIDAPI_PROXY_SECRET
+        sync: false          # paste from RapidAPI > Gateway > Proxy secret
+      - key: X402_PAY_TO
+        sync: false          # USDC receiving address on Base (public address only, never a private key)
+      - key: X402_NETWORK
+        value: eip155:8453
+      - key: X402_FACILITATOR_URL
+        value: https://facilitator.payai.network
+      - key: PUBLIC_BASE_URL
+        value: https://web-intel-api.onrender.com
+      - key: API_KEYS
+        generateValue: true  # internal key for uptime monitoring / direct customers

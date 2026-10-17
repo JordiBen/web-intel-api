@@ -1,0 +1,6 @@
+Website Technology Detector
+Copyright (C) 2026 the Actor author. Licensed under GPL-3.0 (see LICENSE).
+
+Technology fingerprints (data/technologies.json, data/categories.json) come from the
+HTTP Archive fork of Wappalyzer, https://github.com/HTTPArchive/wappalyzer (GPL-3.0).
+The exact commit is recorded in data/SOURCE.txt. Refresh with data/update_fingerprints.py.

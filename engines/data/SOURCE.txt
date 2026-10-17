@@ -1,0 +1,2 @@
+Fingerprints from https://github.com/HTTPArchive/wappalyzer at commit 4c6602672fcd74f7b513a8998b8d373b3311dd4f
+Licensed under GPL-3.0 (see LICENSE). Original project: Wappalyzer.

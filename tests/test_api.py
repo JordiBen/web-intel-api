@@ -1,0 +1,95 @@
+"""Run: pytest -q            (offline-safe tests)
+       LIVE=1 pytest -q     (also hits real public websites)"""
+import base64
+import json
+import os
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import TOOLS, app
+
+c = TestClient(app)
+RAPID = {'X-RapidAPI-Proxy-Secret': 'test-proxy-secret'}
+live = pytest.mark.skipif(os.environ.get('LIVE') != '1', reason='set LIVE=1 for network tests')
+
+
+def test_meta():
+    assert c.get('/healthz').json()['status'] == 'ok'
+    paths = c.get('/openapi.json').json()['paths']
+    for path, *_ in TOOLS.values():
+        assert f'/v1{path}' in paths and f'/x402/v1{path}' in paths
+    assert set(c.get('/pricing').json()['x402']) == set(TOOLS)
+
+
+@pytest.mark.parametrize('headers', [{}, {'X-RapidAPI-Proxy-Secret': 'wrong'}, {'X-API-Key': 'nope'}])
+def test_marketplace_auth_rejects(headers):
+    r = c.post('/v1/markdown', json={'url': 'https://example.com'}, headers=headers)
+    assert r.status_code == 401
+
+
+def test_validation_and_ssrf_guard():
+    assert c.post('/v1/markdown', json={}, headers=RAPID).status_code == 422
+    assert c.post('/v1/broken-links', json={'url': 'example.com', 'max_pages': 500}, headers=RAPID).status_code == 422
+    for url in ('http://127.0.0.1/', 'http://169.254.169.254/latest/meta-data/', 'http://localhost:8080'):
+        r = c.post('/v1/markdown', json={'url': url}, headers={'X-API-Key': 'k2'})
+        assert r.status_code == 422, (url, r.text)
+
+
+@pytest.mark.parametrize('name', list(TOOLS))
+def test_x402_requires_payment(name):
+    path, _m, _h, price, _s = TOOLS[name]
+    r = c.post(f'/x402/v1{path}', json={'url': 'https://example.com'})
+    assert r.status_code == 402
+    req = json.loads(base64.b64decode(r.headers['payment-required']))
+    acc = req['accepts'][0]
+    assert acc['payTo'].lower() == os.environ['X402_PAY_TO'].lower()
+    assert acc['network'] == 'eip155:84532'
+    assert int(acc['amount']) == round(float(price.strip('$')) * 1_000_000)  # USDC has 6 decimals
+    assert req['extensions']['bazaar']['info']['input']['method'] == 'POST'
+    assert req['resource']['url'] == f'https://api.example.test/x402/v1{path}'
+
+
+def test_x402_rejects_garbage_payment():
+    r = c.post('/x402/v1/markdown', json={'url': 'https://example.com'},
+               headers={'PAYMENT-SIGNATURE': base64.b64encode(b'{"x402Version":2}').decode()})
+    assert r.status_code in (400, 402)
+
+
+@live
+def test_live_markdown():
+    r = c.post('/v1/markdown', json={'url': 'https://example.com', 'chunk_size': 100}, headers=RAPID)
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert 'Example Domain' in j['markdown'] and j['chunks']
+
+
+@live
+def test_live_health_audit():
+    r = c.post('/v1/health-audit', json={'url': 'example.com'}, headers=RAPID)
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert 0 <= j['score'] <= 100 and j['http']['status'] == 200 and j['ssl']['valid']
+
+
+@live
+def test_live_tech_detect():
+    r = c.post('/v1/tech-detect', json={'url': 'wordpress.org'}, headers=RAPID)
+    assert r.status_code == 200, r.text
+    names = {t['name'] for t in r.json()['technologies']}
+    assert 'WordPress' in names, names
+
+
+@live
+def test_live_broken_links():
+    r = c.post('/v1/broken-links', json={'url': 'https://example.com', 'max_pages': 2}, headers=RAPID)
+    assert r.status_code == 200, r.text
+    assert r.json()['summary']['pagesCrawled'] >= 1
+
+
+@live
+def test_live_pdf():
+    r = c.post('/v1/pdf-extract', json={'url': 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'},
+               headers=RAPID)
+    assert r.status_code == 200, r.text
+    assert 'Dummy PDF' in r.json()['content']

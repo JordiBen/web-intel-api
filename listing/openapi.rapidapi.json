@@ -1,0 +1,511 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Web Intelligence API",
+    "description": "Website audit, tech-stack detection, page-to-Markdown, broken-link crawl and PDF/OCR extraction in one API. Open source: https://github.com/JordiBen",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/health-audit": {
+      "post": {
+        "tags": [
+          "tools"
+        ],
+        "summary": "Website health audit: HTTP, redirects, SSL expiry, DNS/SPF/DMARC, security headers, SEO basics, 0-100 score",
+        "operationId": "_v1_health_audit_v1_health_audit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Health Audit V1 Health Audit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tech-detect": {
+      "post": {
+        "tags": [
+          "tools"
+        ],
+        "summary": "Detect the technology stack of a website (CMS, frameworks, analytics, CDN, hosting, email provider) - 3,000+ fingerprints",
+        "operationId": "_v1_tech_detect_v1_tech_detect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TechIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Tech Detect V1 Tech Detect Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/markdown": {
+      "post": {
+        "tags": [
+          "tools"
+        ],
+        "summary": "Convert a web page into clean Markdown for LLMs/RAG (main-content extraction, metadata, optional chunks)",
+        "operationId": "_v1_page_markdown_v1_markdown_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkdownIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Page Markdown V1 Markdown Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/broken-links": {
+      "post": {
+        "tags": [
+          "tools"
+        ],
+        "summary": "Crawl up to 50 pages of a site and report broken links (404/5xx/DNS/timeouts) with the page they were found on",
+        "operationId": "_v1_broken_links_v1_broken_links_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinksIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Broken Links V1 Broken Links Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pdf-extract": {
+      "post": {
+        "tags": [
+          "tools"
+        ],
+        "summary": "Extract text and tables from a PDF or image URL, with OCR for scanned pages (up to 20 pages, Hebrew/Arabic RTL aware)",
+        "operationId": "_v1_pdf_extract_v1_pdf_extract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdfIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Pdf Extract V1 Pdf Extract Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "check_dns": {
+            "type": "boolean",
+            "title": "Check Dns",
+            "description": "Check SPF / DMARC / MX / NS records",
+            "default": true
+          },
+          "check_ssl": {
+            "type": "boolean",
+            "title": "Check Ssl",
+            "description": "Check TLS certificate validity and expiry",
+            "default": true
+          },
+          "check_seo": {
+            "type": "boolean",
+            "title": "Check Seo",
+            "description": "Check title, meta description, H1, robots.txt, sitemap",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "AuditIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LinksIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "max_pages": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Max Pages",
+            "description": "Pages of the site to crawl (max 50 per call)",
+            "default": 25
+          },
+          "check_external": {
+            "type": "boolean",
+            "title": "Check External",
+            "default": true
+          },
+          "check_resources": {
+            "type": "boolean",
+            "title": "Check Resources",
+            "description": "Also check images, scripts and stylesheets",
+            "default": false
+          },
+          "include_ok": {
+            "type": "boolean",
+            "title": "Include Ok",
+            "description": "Also return working links",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "LinksIn"
+      },
+      "MarkdownIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "examples": [
+              "https://en.wikipedia.org/wiki/Markdown"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "article",
+              "full"
+            ],
+            "title": "Mode",
+            "description": "article = main content only; full = whole page",
+            "default": "article"
+          },
+          "include_links": {
+            "type": "boolean",
+            "title": "Include Links",
+            "default": true
+          },
+          "include_images": {
+            "type": "boolean",
+            "title": "Include Images",
+            "default": false
+          },
+          "include_tables": {
+            "type": "boolean",
+            "title": "Include Tables",
+            "default": true
+          },
+          "chunk_size": {
+            "type": "integer",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Chunk Size",
+            "description": "If > 0, also return RAG chunks of at most this many characters",
+            "default": 0
+          },
+          "chunk_overlap": {
+            "type": "integer",
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Chunk Overlap",
+            "default": 200
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "MarkdownIn"
+      },
+      "PdfIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Public URL of a PDF or image (PNG/JPEG/TIFF/WebP)",
+            "examples": [
+              "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "text",
+              "ocr"
+            ],
+            "title": "Mode",
+            "description": "auto = text layer, OCR only scanned pages",
+            "default": "auto"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages",
+            "description": "Tesseract language codes, e.g. [\"eng\",\"heb\"]",
+            "default": [
+              "eng"
+            ]
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "text"
+            ],
+            "title": "Output",
+            "default": "markdown"
+          },
+          "max_pages": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Pages",
+            "default": 20
+          },
+          "extract_tables": {
+            "type": "boolean",
+            "title": "Extract Tables",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "PdfIn"
+      },
+      "TechIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "min_confidence": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Confidence",
+            "description": "Drop detections below this confidence",
+            "default": 50
+          },
+          "with_dns": {
+            "type": "boolean",
+            "title": "With Dns",
+            "description": "Also use DNS records (email/DNS providers)",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "TechIn"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://web-intel-api.onrender.com"
+    }
+  ]
+}

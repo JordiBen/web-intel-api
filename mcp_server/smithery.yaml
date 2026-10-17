@@ -1,0 +1,9 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: [rapidapiKey]
+    properties:
+      rapidapiKey: { type: string, description: "RapidAPI key for Web Intelligence API (free tier available)" }
+  commandFunction: |-
+    (config) => ({ command: 'web-intel-mcp', args: [], env: { RAPIDAPI_KEY: config.rapidapiKey } })
