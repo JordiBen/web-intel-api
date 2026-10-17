@@ -34,10 +34,10 @@ for name, path, model, examples, desc in EPS:
             d += f" ({v['minimum']}-{v['maximum']})"
         if len(d) < 10: d += ' option'
         t = 'number' if v.get('type') == 'integer' else 'string'
-        # Zyla: a non-empty value can be a fixed value, so leave it empty (customer input); show example/default in text
+        # Zyla's validator calls each endpoint with these values, so example inputs are prefilled (customers can edit them)
         if k in examples: d += f'. Example: {examples[k]}'
         elif dflt not in (None, ''): d += f'. Default: {dflt}'
-        params.append({'key': k, 'type': t, 'description': d, 'value': '', 'required': k in req})
+        params.append({'key': k, 'type': t, 'description': d, 'value': str(examples.get(k, '')), 'required': k in req})
     ex = spec['paths']['/v1' + path]['post']['responses']['200']['content']['application/json']['example']
     s = json.dumps(ex)
     assert len(s) <= 10000, (path, len(s))
@@ -59,7 +59,7 @@ listing = {
     {'name': 'ProPlus', 'interval': 'Monthly', 'price': 99.0, 'max_requests': 50000, 'rate_limit': 240},
   ],
   'faqs': [
-    {'question': 'Can I check a bare domain instead of a full URL?', 'answer': 'Yes. Website Health Audit, Tech Stack Detection and Broken Link Finder accept either example.com or https://example.com.'},
+    {'question': 'Can I check a bare domain instead of a full URL?', 'answer': 'Yes. Website Health Audit, Tech Stack Detection and Broken Link Finder accept either a bare domain name or a full address that starts with https.'},
     {'question': 'Why do some calls take longer?', 'answer': 'Broken Link Finder crawls up to 50 pages and OCR processes up to 20 pages, so these calls can take 10-100 seconds. The other endpoints usually answer in a few seconds.'},
     {'question': 'Which OCR languages are supported?', 'answer': 'English (eng), Hebrew (heb), Arabic (ara), German (deu), French (fra) and Spanish (spa). Pass them comma-separated in the languages parameter. Right-to-left text is fixed automatically.'},
     {'question': 'Can it access private or internal addresses?', 'answer': 'No. Only public websites are checked; private, local and internal addresses are blocked.'},

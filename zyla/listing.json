@@ -1,0 +1,631 @@
+{
+  "product_key": "webintel-web-intelligence-api",
+  "publish": true,
+  "api": {
+    "name": "Web Intelligence API",
+    "short_description": "Web Intelligence API audits websites, detects their tech stack, converts pages to Markdown, finds broken links and extracts text from PDFs with OCR, all with one key.",
+    "trial": true
+  },
+  "access": {
+    "in": "header",
+    "key": "X-Zyla-Secret",
+    "value": "__SECRET__"
+  },
+  "endpoints": [
+    {
+      "name": "Website Health Audit",
+      "description": "Audit one website: HTTP status, redirects, SSL expiry, DNS/SPF/DMARC, security headers, SEO basics and a 0-100 score with prioritized issues.",
+      "method": "GET",
+      "base_url": "https://web-intel-api.onrender.com/v1/health-audit",
+      "parameters": [
+        {
+          "key": "url",
+          "type": "string",
+          "description": "Website URL or bare domain, e.g. \"example.com\". Example: example.com",
+          "value": "example.com",
+          "required": true
+        },
+        {
+          "key": "check_dns",
+          "type": "string",
+          "description": "Check SPF / DMARC / MX / NS records (true or false). Default: true",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "check_ssl",
+          "type": "string",
+          "description": "Check TLS certificate validity and expiry (true or false). Default: true",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "check_seo",
+          "type": "string",
+          "description": "Check title, meta description, H1, robots.txt, sitemap (true or false). Default: true",
+          "value": "",
+          "required": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "example_response": {
+        "input": "example.com",
+        "url": "https://example.com/",
+        "host": "example.com",
+        "checkedAt": "2026-10-17T10:54:30+00:00",
+        "http": {
+          "finalUrl": "https://example.com/",
+          "status": 200,
+          "redirectChain": [
+            {
+              "url": "https://example.com/",
+              "status": 200
+            }
+          ],
+          "responseTimeMs": 45,
+          "contentType": "text/html; charset=utf-8",
+          "bytes": 577
+        },
+        "securityHeaders": {
+          "present": {},
+          "missing": [
+            "HSTS",
+            "Content-Security-Policy",
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "Referrer-Policy",
+            "Permissions-Policy"
+          ],
+          "server": "cloudflare",
+          "xPoweredBy": null
+        },
+        "seo": {
+          "title": "Example Domain",
+          "titleLength": 14,
+          "metaDescription": null,
+          "metaDescriptionLength": 0,
+          "canonical": null,
+          "robotsMeta": null,
+          "lang": "en",
+          "viewport": "width=device-width,initial-scale=1",
+          "h1Count": 0,
+          "h1": [],
+          "imagesTotal": 0,
+          "imagesMissingAlt": 0,
+          "openGraph": {
+            "title": null,
+            "description": null,
+            "image": null
+          },
+          "favicon": true
+        },
+        "robotsTxt": {
+          "url": "https://example.com/robots.txt",
+          "status": 404,
+          "found": false,
+          "sitemaps": null
+        },
+        "sitemap": {
+          "url": "https://example.com/sitemap.xml",
+          "status": 404,
+          "found": false,
+          "sitemaps": null
+        },
+        "ssl": {
+          "host": "example.com",
+          "valid": true,
+          "tlsVersion": "TLSv1.3",
+          "issuer": "SSL Corporation",
+          "subject": "example.com",
+          "validFrom": "2026-09-26T22:49:11+00:00",
+          "validTo": "2026-12-25T22:56:35+00:00",
+          "daysUntilExpiry": 69,
+          "subjectAltNames": [
+            "example.com",
+            "*.example.com"
+          ]
+        },
+        "dns": {
+          "A": [
+            "104.20.23.154",
+            "172.66.147.243"
+          ],
+          "AAAA": [
+            "2606:4700:10::6814:179a",
+            "2606:4700:10::ac42:93f3"
+          ],
+          "MX": [
+            "0 ."
+          ],
+          "NS": [
+            "elliott.ns.cloudflare.com",
+            "hera.ns.cloudflare.com"
+          ],
+          "CAA": [],
+          "spf": "v=spf1 -all",
+          "dmarc": "v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s",
+          "txtCount": 2,
+          "domain": "example.com"
+        },
+        "score": 62,
+        "issues": [
+          {
+            "severity": "high",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: HSTS"
+          },
+          {
+            "severity": "low",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: Content-Security-Policy"
+          },
+          {
+            "severity": "low",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: X-Content-Type-Options"
+          },
+          {
+            "severity": "low",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: X-Frame-Options"
+          },
+          {
+            "severity": "low",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: Referrer-Policy"
+          },
+          {
+            "severity": "low",
+            "code": "MISSING_HEADER",
+            "message": "Missing security header: Permissions-Policy"
+          },
+          {
+            "severity": "low",
+            "code": "NO_CAA",
+            "message": "No CAA record restricting certificate authorities"
+          },
+          {
+            "severity": "medium",
+            "code": "NO_META_DESCRIPTION",
+            "message": "No meta description"
+          },
+          {
+            "severity": "medium",
+            "code": "NO_H1",
+            "message": "No <h1> heading"
+          },
+          {
+            "severity": "low",
+            "code": "NO_CANONICAL",
+            "message": "No canonical link"
+          },
+          {
+            "severity": "low",
+            "code": "NO_ROBOTS_TXT",
+            "message": "robots.txt not found"
+          },
+          {
+            "severity": "low",
+            "code": "NO_SITEMAP",
+            "message": "No sitemap.xml found (and none declared in robots.txt)"
+          }
+        ],
+        "issueCount": 12
+      }
+    },
+    {
+      "name": "Tech Stack Detection",
+      "description": "Detect the CMS, frameworks, analytics, CDN, hosting and email providers of a website, with versions and confidence scores.",
+      "method": "GET",
+      "base_url": "https://web-intel-api.onrender.com/v1/tech-detect",
+      "parameters": [
+        {
+          "key": "url",
+          "type": "string",
+          "description": "Website URL or bare domain, e.g. \"example.com\". Example: wordpress.org",
+          "value": "wordpress.org",
+          "required": true
+        },
+        {
+          "key": "min_confidence",
+          "type": "number",
+          "description": "Drop detections below this confidence (0-100). Default: 50",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "with_dns",
+          "type": "string",
+          "description": "Also use DNS records (email/DNS providers) (true or false). Default: true",
+          "value": "",
+          "required": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "example_response": {
+        "input": "wordpress.org",
+        "checkedAt": "2026-10-17T10:54:31+00:00",
+        "finalUrl": "https://wordpress.org/",
+        "status": 200,
+        "redirectChain": [
+          {
+            "url": "https://wordpress.org/",
+            "status": 200
+          }
+        ],
+        "certIssuer": null,
+        "technologyCount": 12,
+        "categories": [
+          "Blogs",
+          "CMS",
+          "Databases",
+          "Font scripts",
+          "Miscellaneous",
+          "Page builders",
+          "Performance",
+          "Programming languages",
+          "Reverse proxies",
+          "Security",
+          "Tag managers",
+          "Web servers",
+          "WordPress plugins"
+        ],
+        "technologies": [
+          {
+            "name": "WordPress",
+            "version": "7.2",
+            "confidence": 100,
+            "categories": [
+              "CMS",
+              "Blogs"
+            ],
+            "website": "https://wordpress.org",
+            "saas": true,
+            "oss": true,
+            "pricing": [
+              "low",
+              "recurring",
+              "freemium"
+            ],
+            "cpe": "cpe:2.3:a:wordpress:wordpress:*:*:*:*:*:*:*:*",
+            "detectedVia": [
+              "headers",
+              "meta",
+              "scriptSrc"
+            ]
+          },
+          {
+            "name": "MySQL",
+            "version": null,
+            "confidence": 100,
+            "categories": [
+              "Databases"
+            ],
+            "website": "https://mysql.com",
+            "saas": null,
+            "oss": null,
+            "pricing": [],
+            "cpe": "cpe:2.3:a:mysql:mysql:*:*:*:*:*:*:*:*",
+            "detectedVia": [
+              "implied by WordPress"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Page to Markdown",
+      "description": "Convert a web page into clean Markdown of its main content, with title, author, date and language, plus optional RAG chunks.",
+      "method": "GET",
+      "base_url": "https://web-intel-api.onrender.com/v1/markdown",
+      "parameters": [
+        {
+          "key": "url",
+          "type": "string",
+          "description": "Url option. Example: https://en.wikipedia.org/wiki/Markdown",
+          "value": "https://en.wikipedia.org/wiki/Markdown",
+          "required": true
+        },
+        {
+          "key": "mode",
+          "type": "string",
+          "description": "article = main content only; full = whole page (one of: article, full). Default: article",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "include_links",
+          "type": "string",
+          "description": "Include links (true or false). Default: true",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "include_images",
+          "type": "string",
+          "description": "Include images (true or false). Default: false",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "include_tables",
+          "type": "string",
+          "description": "Include tables (true or false). Default: true",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "chunk_size",
+          "type": "number",
+          "description": "If > 0, also return RAG chunks of at most this many characters (0-20000). Default: 0",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "chunk_overlap",
+          "type": "number",
+          "description": "Chunk overlap (0-2000). Default: 200",
+          "value": "",
+          "required": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "example_response": {
+        "url": "https://en.wikipedia.org/wiki/Markdown",
+        "finalUrl": "https://en.wikipedia.org/wiki/Markdown",
+        "statusCode": 200,
+        "crawledAt": "2026-10-17T10:54:30+00:00",
+        "title": "Markdown - Wikipedia",
+        "description": null,
+        "author": "Authority control databases International FAST National United States Israel",
+        "publishedDate": "2005-08-09",
+        "siteName": "Wikimedia Foundation, Inc.",
+        "language": "en",
+        "extractionMode": "article",
+        "markdown": "# Markdown\n\n| Markdown |  | \n|---|---|\n| [Filename extensions](https://en.wikipedia.org/wiki/Filename_extension) | `.md`, `.markdown`<sup>[\\[1\\]](https://en.wikipedia.org#cite_note-df-2022-1)</sup><sup>[\\[2\\]](https://en.wikipedia.org#cite_note-rfc7763-2)</sup> | \n| [Internet media\u00a0type](https://en.wikipedia.org/wiki/Media_type) | `text/markdown`<sup>[\\[2\\]](https://en.wikipedia.org#cite_note-rfc7 \u2026",
+        "wordCount": 6134,
+        "estimatedTokens": 10767
+      }
+    },
+    {
+      "name": "Broken Link Finder",
+      "description": "Crawl up to 50 pages of a website and list broken links (404, 5xx, DNS, timeouts) with the page and anchor text where each appears.",
+      "method": "GET",
+      "base_url": "https://web-intel-api.onrender.com/v1/broken-links",
+      "parameters": [
+        {
+          "key": "url",
+          "type": "string",
+          "description": "Website URL or bare domain, e.g. \"example.com\". Example: crawlee.dev",
+          "value": "crawlee.dev",
+          "required": true
+        },
+        {
+          "key": "max_pages",
+          "type": "number",
+          "description": "Pages of the site to crawl (max 50 per call) (1-50). Example: 10",
+          "value": "10",
+          "required": false
+        },
+        {
+          "key": "check_external",
+          "type": "string",
+          "description": "Check external (true or false). Default: true",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "check_resources",
+          "type": "string",
+          "description": "Also check images, scripts and stylesheets (true or false). Default: false",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "include_ok",
+          "type": "string",
+          "description": "Also return working links (true or false). Default: false",
+          "value": "",
+          "required": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "example_response": {
+        "startUrl": "crawlee.dev",
+        "checkedAt": "2026-10-17T10:55:00+00:00",
+        "summary": {
+          "pagesCrawled": 5,
+          "pagesSkippedByRobots": 0,
+          "linksChecked": 288,
+          "broken": 0,
+          "blocked": 5,
+          "ok": 283,
+          "stoppedEarly": false,
+          "robotsTxtUsed": true
+        },
+        "links": [
+          {
+            "url": "https://npmjs.com/package/@apify/storage-local",
+            "verdict": "blocked",
+            "status": 403,
+            "error": null,
+            "finalUrl": "https://www.npmjs.com/package/@apify/storage-local",
+            "redirects": 1,
+            "resourceType": "link",
+            "internal": false,
+            "foundOn": [
+              "https://crawlee.dev/js/api/core"
+            ],
+            "anchorTexts": [
+              "@apify/storage-local"
+            ]
+          },
+          {
+            "url": "https://npmjs.com/package/browser-pool",
+            "verdict": "blocked",
+            "status": 403,
+            "error": null,
+            "finalUrl": "https://www.npmjs.com/package/browser-pool",
+            "redirects": 1,
+            "resourceType": "link",
+            "internal": false,
+            "foundOn": [
+              "https://crawlee.dev/js/api/core"
+            ],
+            "anchorTexts": [
+              "browser-pool"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "PDF and Image Text Extraction",
+      "description": "Extract text and tables from a PDF or image URL, with OCR for scanned pages in English, Hebrew, Arabic, German, French and Spanish.",
+      "method": "GET",
+      "base_url": "https://web-intel-api.onrender.com/v1/pdf-extract",
+      "parameters": [
+        {
+          "key": "url",
+          "type": "string",
+          "description": "Public URL of a PDF or image (PNG/JPEG/TIFF/WebP). Example: https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+          "value": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+          "required": true
+        },
+        {
+          "key": "mode",
+          "type": "string",
+          "description": "auto = text layer, OCR only scanned pages (one of: auto, text, ocr). Default: auto",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "languages",
+          "type": "string",
+          "description": "OCR language codes, comma-separated: eng, heb, ara, deu, fra, spa. Default: eng",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "output",
+          "type": "string",
+          "description": "Output (one of: markdown, text). Default: markdown",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "max_pages",
+          "type": "number",
+          "description": "Max pages (1-20). Default: 20",
+          "value": "",
+          "required": false
+        },
+        {
+          "key": "extract_tables",
+          "type": "string",
+          "description": "Extract tables (true or false). Default: true",
+          "value": "",
+          "required": false
+        }
+      ],
+      "headers": [
+        {
+          "key": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "example_response": {
+        "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "bytes": 13264,
+        "pageCount": 1,
+        "ocrPages": 0,
+        "textLayerPages": 1,
+        "tableCount": 0,
+        "format": "markdown",
+        "truncated": false,
+        "content": "<!-- page 1 (text) -->\n\nDummy PDF file",
+        "pages": [
+          {
+            "page": 1,
+            "method": "text",
+            "text": "Dummy PDF file",
+            "tables": [],
+            "ocrConfidence": null
+          }
+        ]
+      }
+    }
+  ],
+  "plans": [
+    {
+      "name": "Free",
+      "interval": "Monthly",
+      "price": 0,
+      "max_requests": 50,
+      "rate_limit": 60
+    },
+    {
+      "name": "Basic",
+      "interval": "Monthly",
+      "price": 9.99,
+      "max_requests": 2000,
+      "rate_limit": 120
+    },
+    {
+      "name": "Pro",
+      "interval": "Monthly",
+      "price": 29.99,
+      "max_requests": 10000,
+      "rate_limit": 180
+    },
+    {
+      "name": "ProPlus",
+      "interval": "Monthly",
+      "price": 99.0,
+      "max_requests": 50000,
+      "rate_limit": 240
+    }
+  ],
+  "faqs": [
+    {
+      "question": "Can I check a bare domain instead of a full URL?",
+      "answer": "Yes. Website Health Audit, Tech Stack Detection and Broken Link Finder accept either a bare domain name or a full address that starts with https."
+    },
+    {
+      "question": "Why do some calls take longer?",
+      "answer": "Broken Link Finder crawls up to 50 pages and OCR processes up to 20 pages, so these calls can take 10-100 seconds. The other endpoints usually answer in a few seconds."
+    },
+    {
+      "question": "Which OCR languages are supported?",
+      "answer": "English (eng), Hebrew (heb), Arabic (ara), German (deu), French (fra) and Spanish (spa). Pass them comma-separated in the languages parameter. Right-to-left text is fixed automatically."
+    },
+    {
+      "question": "Can it access private or internal addresses?",
+      "answer": "No. Only public websites are checked; private, local and internal addresses are blocked."
+    },
+    {
+      "question": "Does it respect robots.txt?",
+      "answer": "Yes. Links blocked by robots.txt or by the target site are reported as blocked, not as broken."
+    }
+  ]
+}
