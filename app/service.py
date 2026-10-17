@@ -91,7 +91,10 @@ async def broken_links(req: LinksIn) -> dict[str, Any]:
     async with HEAVY, httpx.AsyncClient(timeout=15, headers={'User-Agent': LINKS_UA},
                                         limits=httpx.Limits(max_connections=20)) as client:
         try:
-            result = await asyncio.wait_for(crawl(req.url, opts, client), timeout=110)
+            start = req.url.strip()
+            if '://' not in start:  # the model documents bare domains ("example.com") as valid input
+                start = 'https://' + start
+            result = await asyncio.wait_for(crawl(start, opts, client), timeout=110)
         except ValueError as e:
             raise UserInputError(str(e)) from e
     rows, summary = build_report(result, include_ok=req.include_ok)

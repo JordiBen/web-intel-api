@@ -1,0 +1,895 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Web Intelligence API",
+    "description": "Website audit, tech-stack detection, page-to-Markdown, broken-link crawl and PDF/OCR extraction behind one key. Built and maintained by WebIntel Tools (https://jordiben.github.io/). Developed with AI assistance and tested against live websites.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "WebIntel Tools",
+      "url": "https://jordiben.github.io/"
+    },
+    "termsOfService": "https://jordiben.github.io/terms.html"
+  },
+  "paths": {
+    "/v1/health-audit": {
+      "post": {
+        "tags": [
+          "Website audit"
+        ],
+        "summary": "Website health & SEO audit",
+        "operationId": "websiteHealthAudit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditIn"
+              },
+              "example": {
+                "url": "example.com",
+                "check_dns": true,
+                "check_ssl": true,
+                "check_seo": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Health Audit V1 Health Audit Post"
+                },
+                "example": {
+                  "input": "example.com",
+                  "url": "https://example.com/",
+                  "host": "example.com",
+                  "checkedAt": "2026-10-17T10:54:30+00:00",
+                  "http": {
+                    "finalUrl": "https://example.com/",
+                    "status": 200,
+                    "redirectChain": [
+                      {
+                        "url": "https://example.com/",
+                        "status": 200
+                      }
+                    ],
+                    "responseTimeMs": 45,
+                    "contentType": "text/html; charset=utf-8",
+                    "bytes": 577
+                  },
+                  "securityHeaders": {
+                    "present": {},
+                    "missing": [
+                      "HSTS",
+                      "Content-Security-Policy",
+                      "X-Content-Type-Options",
+                      "X-Frame-Options",
+                      "Referrer-Policy",
+                      "Permissions-Policy"
+                    ],
+                    "server": "cloudflare",
+                    "xPoweredBy": null
+                  },
+                  "seo": {
+                    "title": "Example Domain",
+                    "titleLength": 14,
+                    "metaDescription": null,
+                    "metaDescriptionLength": 0,
+                    "canonical": null,
+                    "robotsMeta": null,
+                    "lang": "en",
+                    "viewport": "width=device-width,initial-scale=1",
+                    "h1Count": 0,
+                    "h1": [],
+                    "imagesTotal": 0,
+                    "imagesMissingAlt": 0,
+                    "openGraph": {
+                      "title": null,
+                      "description": null,
+                      "image": null
+                    },
+                    "favicon": true
+                  },
+                  "robotsTxt": {
+                    "url": "https://example.com/robots.txt",
+                    "status": 404,
+                    "found": false,
+                    "sitemaps": null
+                  },
+                  "sitemap": {
+                    "url": "https://example.com/sitemap.xml",
+                    "status": 404,
+                    "found": false,
+                    "sitemaps": null
+                  },
+                  "ssl": {
+                    "host": "example.com",
+                    "valid": true,
+                    "tlsVersion": "TLSv1.3",
+                    "issuer": "SSL Corporation",
+                    "subject": "example.com",
+                    "validFrom": "2026-09-26T22:49:11+00:00",
+                    "validTo": "2026-12-25T22:56:35+00:00",
+                    "daysUntilExpiry": 69,
+                    "subjectAltNames": [
+                      "example.com",
+                      "*.example.com"
+                    ]
+                  },
+                  "dns": {
+                    "A": [
+                      "104.20.23.154",
+                      "172.66.147.243"
+                    ],
+                    "AAAA": [
+                      "2606:4700:10::6814:179a",
+                      "2606:4700:10::ac42:93f3"
+                    ],
+                    "MX": [
+                      "0 ."
+                    ],
+                    "NS": [
+                      "elliott.ns.cloudflare.com",
+                      "hera.ns.cloudflare.com"
+                    ],
+                    "CAA": [],
+                    "spf": "v=spf1 -all",
+                    "dmarc": "v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s",
+                    "txtCount": 2,
+                    "domain": "example.com"
+                  },
+                  "score": 62,
+                  "issues": [
+                    {
+                      "severity": "high",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: HSTS"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: Content-Security-Policy"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: X-Content-Type-Options"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: X-Frame-Options"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: Referrer-Policy"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "MISSING_HEADER",
+                      "message": "Missing security header: Permissions-Policy"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "NO_CAA",
+                      "message": "No CAA record restricting certificate authorities"
+                    },
+                    {
+                      "severity": "medium",
+                      "code": "NO_META_DESCRIPTION",
+                      "message": "No meta description"
+                    },
+                    {
+                      "severity": "medium",
+                      "code": "NO_H1",
+                      "message": "No <h1> heading"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "NO_CANONICAL",
+                      "message": "No canonical link"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "NO_ROBOTS_TXT",
+                      "message": "robots.txt not found"
+                    },
+                    {
+                      "severity": "low",
+                      "code": "NO_SITEMAP",
+                      "message": "No sitemap.xml found (and none declared in robots.txt)"
+                    }
+                  ],
+                  "issueCount": 12
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request did not come through the marketplace"
+          },
+          "429": {
+            "description": "Plan quota or rate limit reached"
+          }
+        },
+        "description": "Checks one website and returns HTTP status, redirect chain and response time, SSL validity and days to expiry, SPF/DMARC/MX/NS records, security headers, on-page SEO basics (title, meta description, H1, canonical, robots.txt, sitemap) and a 0-100 score with prioritized issues. Typical time: 2-8 s."
+      }
+    },
+    "/v1/tech-detect": {
+      "post": {
+        "tags": [
+          "Technology detection"
+        ],
+        "summary": "Detect a website's technology stack",
+        "operationId": "detectTechStack",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TechIn"
+              },
+              "example": {
+                "url": "wordpress.org",
+                "min_confidence": 50,
+                "with_dns": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Tech Detect V1 Tech Detect Post"
+                },
+                "example": {
+                  "input": "wordpress.org",
+                  "checkedAt": "2026-10-17T10:54:31+00:00",
+                  "finalUrl": "https://wordpress.org/",
+                  "status": 200,
+                  "redirectChain": [
+                    {
+                      "url": "https://wordpress.org/",
+                      "status": 200
+                    }
+                  ],
+                  "certIssuer": null,
+                  "technologyCount": 12,
+                  "categories": [
+                    "Blogs",
+                    "CMS",
+                    "Databases",
+                    "Font scripts",
+                    "Miscellaneous",
+                    "Page builders",
+                    "Performance",
+                    "Programming languages",
+                    "Reverse proxies",
+                    "Security",
+                    "Tag managers",
+                    "Web servers",
+                    "WordPress plugins"
+                  ],
+                  "technologies": [
+                    {
+                      "name": "WordPress",
+                      "version": "7.2",
+                      "confidence": 100,
+                      "categories": [
+                        "CMS",
+                        "Blogs"
+                      ],
+                      "website": "https://wordpress.org",
+                      "saas": true,
+                      "oss": true,
+                      "pricing": [
+                        "low",
+                        "recurring",
+                        "freemium"
+                      ],
+                      "cpe": "cpe:2.3:a:wordpress:wordpress:*:*:*:*:*:*:*:*",
+                      "detectedVia": [
+                        "headers",
+                        "meta",
+                        "scriptSrc"
+                      ]
+                    },
+                    {
+                      "name": "MySQL",
+                      "version": null,
+                      "confidence": 100,
+                      "categories": [
+                        "Databases"
+                      ],
+                      "website": "https://mysql.com",
+                      "saas": null,
+                      "oss": null,
+                      "pricing": [],
+                      "cpe": "cpe:2.3:a:mysql:mysql:*:*:*:*:*:*:*:*",
+                      "detectedVia": [
+                        "implied by WordPress"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request did not come through the marketplace"
+          },
+          "429": {
+            "description": "Plan quota or rate limit reached"
+          }
+        },
+        "description": "Identifies CMS, e-commerce platform, JavaScript frameworks, analytics, tag managers, CDN, hosting, email and DNS providers, with versions and confidence scores. Uses 3,000+ open fingerprints. A BuiltWith/Wappalyzer alternative for lead enrichment. Typical time: 2-6 s."
+      }
+    },
+    "/v1/markdown": {
+      "post": {
+        "tags": [
+          "Content extraction"
+        ],
+        "summary": "Convert a web page to clean Markdown",
+        "operationId": "pageToMarkdown",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkdownIn"
+              },
+              "example": {
+                "url": "https://en.wikipedia.org/wiki/Markdown",
+                "mode": "article",
+                "chunk_size": 0
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Page Markdown V1 Markdown Post"
+                },
+                "example": {
+                  "url": "https://en.wikipedia.org/wiki/Markdown",
+                  "finalUrl": "https://en.wikipedia.org/wiki/Markdown",
+                  "statusCode": 200,
+                  "crawledAt": "2026-10-17T10:54:30+00:00",
+                  "title": "Markdown - Wikipedia",
+                  "description": null,
+                  "author": "Authority control databases International FAST National United States Israel",
+                  "publishedDate": "2005-08-09",
+                  "siteName": "Wikimedia Foundation, Inc.",
+                  "language": "en",
+                  "extractionMode": "article",
+                  "markdown": "# Markdown\n\n| Markdown |  | \n|---|---|\n| [Filename extensions](https://en.wikipedia.org/wiki/Filename_extension) | `.md`, `.markdown`<sup>[\\[1\\]](https://en.wikipedia.org#cite_note-df-2022-1)</sup><sup>[\\[2\\]](https://en.wikipedia.org#cite_note-rfc7763-2)</sup> | \n| [Internet media type](https://en.wikipedia.org/wiki/Media_type) | `text/markdown`<sup>[\\[2\\]](https://en.wikipedia.org#cite_note-rfc7 …",
+                  "wordCount": 6134,
+                  "estimatedTokens": 10767
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request did not come through the marketplace"
+          },
+          "429": {
+            "description": "Plan quota or rate limit reached"
+          }
+        },
+        "description": "Fetches a page and returns its main content as clean Markdown with title, author, date and language. Set chunk_size to also get RAG-ready chunks with overlap. Respects robots.txt. Typical time: 1-4 s."
+      }
+    },
+    "/v1/broken-links": {
+      "post": {
+        "tags": [
+          "Link checking"
+        ],
+        "summary": "Crawl a site and find broken links",
+        "operationId": "findBrokenLinks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinksIn"
+              },
+              "example": {
+                "url": "crawlee.dev",
+                "max_pages": 5,
+                "check_external": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Broken Links V1 Broken Links Post"
+                },
+                "example": {
+                  "startUrl": "crawlee.dev",
+                  "checkedAt": "2026-10-17T10:55:00+00:00",
+                  "summary": {
+                    "pagesCrawled": 5,
+                    "pagesSkippedByRobots": 0,
+                    "linksChecked": 288,
+                    "broken": 0,
+                    "blocked": 5,
+                    "ok": 283,
+                    "stoppedEarly": false,
+                    "robotsTxtUsed": true
+                  },
+                  "links": [
+                    {
+                      "url": "https://npmjs.com/package/@apify/storage-local",
+                      "verdict": "blocked",
+                      "status": 403,
+                      "error": null,
+                      "finalUrl": "https://www.npmjs.com/package/@apify/storage-local",
+                      "redirects": 1,
+                      "resourceType": "link",
+                      "internal": false,
+                      "foundOn": [
+                        "https://crawlee.dev/js/api/core"
+                      ],
+                      "anchorTexts": [
+                        "@apify/storage-local"
+                      ]
+                    },
+                    {
+                      "url": "https://npmjs.com/package/browser-pool",
+                      "verdict": "blocked",
+                      "status": 403,
+                      "error": null,
+                      "finalUrl": "https://www.npmjs.com/package/browser-pool",
+                      "redirects": 1,
+                      "resourceType": "link",
+                      "internal": false,
+                      "foundOn": [
+                        "https://crawlee.dev/js/api/core"
+                      ],
+                      "anchorTexts": [
+                        "browser-pool"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request did not come through the marketplace"
+          },
+          "429": {
+            "description": "Plan quota or rate limit reached"
+          }
+        },
+        "description": "Crawls up to 50 pages of a website and reports every broken link (404, 5xx, DNS errors, timeouts) with the page and anchor text where it was found. 'blocked' means the target refused automated checks (e.g. 403 from a bot wall), not that it is broken. Respects robots.txt. Typical time: 10-100 s depending on max_pages."
+      }
+    },
+    "/v1/pdf-extract": {
+      "post": {
+        "tags": [
+          "Documents & OCR"
+        ],
+        "summary": "Extract text and tables from a PDF or image (OCR)",
+        "operationId": "extractPdfText",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdfIn"
+              },
+              "example": {
+                "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                "mode": "auto",
+                "languages": [
+                  "eng"
+                ],
+                "output": "markdown"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response  V1 Pdf Extract V1 Pdf Extract Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request did not come through the marketplace"
+          },
+          "429": {
+            "description": "Plan quota or rate limit reached"
+          }
+        },
+        "description": "Downloads a public PDF or image and returns text (Markdown or plain) and tables. Scanned pages are OCR'd in English, Hebrew, Arabic, German, French or Spanish; RTL text is fixed. Up to 20 pages per call. Typical time: 2-60 s."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "check_dns": {
+            "type": "boolean",
+            "title": "Check Dns",
+            "description": "Check SPF / DMARC / MX / NS records",
+            "default": true
+          },
+          "check_ssl": {
+            "type": "boolean",
+            "title": "Check Ssl",
+            "description": "Check TLS certificate validity and expiry",
+            "default": true
+          },
+          "check_seo": {
+            "type": "boolean",
+            "title": "Check Seo",
+            "description": "Check title, meta description, H1, robots.txt, sitemap",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "AuditIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LinksIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "max_pages": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Max Pages",
+            "description": "Pages of the site to crawl (max 50 per call)",
+            "default": 25
+          },
+          "check_external": {
+            "type": "boolean",
+            "title": "Check External",
+            "default": true
+          },
+          "check_resources": {
+            "type": "boolean",
+            "title": "Check Resources",
+            "description": "Also check images, scripts and stylesheets",
+            "default": false
+          },
+          "include_ok": {
+            "type": "boolean",
+            "title": "Include Ok",
+            "description": "Also return working links",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "LinksIn"
+      },
+      "MarkdownIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "examples": [
+              "https://en.wikipedia.org/wiki/Markdown"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "article",
+              "full"
+            ],
+            "title": "Mode",
+            "description": "article = main content only; full = whole page",
+            "default": "article"
+          },
+          "include_links": {
+            "type": "boolean",
+            "title": "Include Links",
+            "default": true
+          },
+          "include_images": {
+            "type": "boolean",
+            "title": "Include Images",
+            "default": false
+          },
+          "include_tables": {
+            "type": "boolean",
+            "title": "Include Tables",
+            "default": true
+          },
+          "chunk_size": {
+            "type": "integer",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Chunk Size",
+            "description": "If > 0, also return RAG chunks of at most this many characters",
+            "default": 0
+          },
+          "chunk_overlap": {
+            "type": "integer",
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Chunk Overlap",
+            "default": 200
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "MarkdownIn"
+      },
+      "PdfIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Public URL of a PDF or image (PNG/JPEG/TIFF/WebP)",
+            "examples": [
+              "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "text",
+              "ocr"
+            ],
+            "title": "Mode",
+            "description": "auto = text layer, OCR only scanned pages",
+            "default": "auto"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages",
+            "description": "Tesseract language codes, e.g. [\"eng\",\"heb\"]",
+            "default": [
+              "eng"
+            ]
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "text"
+            ],
+            "title": "Output",
+            "default": "markdown"
+          },
+          "max_pages": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Pages",
+            "default": 20
+          },
+          "extract_tables": {
+            "type": "boolean",
+            "title": "Extract Tables",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "PdfIn"
+      },
+      "TechIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Website URL or bare domain, e.g. \"example.com\"",
+            "examples": [
+              "example.com"
+            ]
+          },
+          "min_confidence": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Confidence",
+            "description": "Drop detections below this confidence",
+            "default": 50
+          },
+          "with_dns": {
+            "type": "boolean",
+            "title": "With Dns",
+            "description": "Also use DNS records (email/DNS providers)",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "TechIn"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://web-intel-api.onrender.com"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Website audit"
+    },
+    {
+      "name": "Technology detection"
+    },
+    {
+      "name": "Content extraction"
+    },
+    {
+      "name": "Link checking"
+    },
+    {
+      "name": "Documents & OCR"
+    }
+  ]
+}
