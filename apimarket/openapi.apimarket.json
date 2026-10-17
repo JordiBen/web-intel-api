@@ -564,6 +564,26 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response  V1 Pdf Extract V1 Pdf Extract Post"
+                },
+                "example": {
+                  "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                  "bytes": 13264,
+                  "pageCount": 1,
+                  "ocrPages": 0,
+                  "textLayerPages": 1,
+                  "tableCount": 0,
+                  "format": "markdown",
+                  "truncated": false,
+                  "content": "<!-- page 1 (text) -->\n\nDummy PDF file",
+                  "pages": [
+                    {
+                      "page": 1,
+                      "method": "text",
+                      "text": "Dummy PDF file",
+                      "tables": [],
+                      "ocrConfidence": null
+                    }
+                  ]
                 }
               }
             }
