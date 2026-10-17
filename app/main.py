@@ -17,6 +17,7 @@ Environment:
 """
 from __future__ import annotations
 
+import asyncio
 import hmac
 import logging
 import os
@@ -175,6 +176,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title='Web Intelligence API', version=VERSION,
                   description='Website audit, tech-stack detection, page-to-Markdown, broken-link crawl and PDF/OCR '
                               'extraction in one API. Open source: https://github.com/JordiBen')
+
+    from . import keepalive
+    if keepalive.enabled():
+        @app.on_event('startup')
+        async def _start_keepalive() -> None:
+            app.state.keepalive_task = asyncio.create_task(keepalive.run())
 
     @app.get('/', include_in_schema=False)
     async def root() -> RedirectResponse:
