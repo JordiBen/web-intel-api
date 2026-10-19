@@ -30,7 +30,7 @@ Web Intelligence API bundles five website and document tools behind one subscrip
 **Limitations**
 - Public websites only; private and internal addresses are blocked.
 - Broken Link Finder: max 50 pages per call. PDF extraction: max 20 pages per call.
-- Broken Link Finder checks up to 100 links per call by default (max_links, up to 500) and both heavy endpoints answer within a time budget (time_budget, default 15 s, max 25 s); when it is reached they return the results gathered so far with truncated = true.
+- Broken Link Finder checks up to 100 links per call by default (max_links, up to 500) and both heavy endpoints answer within a time budget (time_budget, default 10 s, max 25 s); when it is reached they return the results gathered so far with truncated = true.
 - The tool respects robots.txt. Some sites block automated checks; those links are reported as "blocked", not "broken".
 
 **About us**

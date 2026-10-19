@@ -56,7 +56,7 @@ POST /v1/tech-detect with body {"url": "wordpress.org"} returns the detected tec
 ## Limitations
 - Public websites only; private and internal addresses are blocked.
 - Broken Link Finder: max 50 pages per call. PDF extraction: max 20 pages per call.
-- Heavy calls (broken links, OCR) stop at a time budget (default 15 s, max 25 s) and return partial results with truncated = true.
+- Heavy calls (broken links, OCR) stop at a time budget (default 10 s, max 25 s) and return partial results with truncated = true.
 - The tool respects robots.txt. Sites that block automated checks are reported as "blocked", not "broken".
 
 ## About us

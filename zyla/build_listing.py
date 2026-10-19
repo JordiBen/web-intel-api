@@ -60,7 +60,7 @@ listing = {
   ],
   'faqs': [
     {'question': 'Can I check a bare domain instead of a full URL?', 'answer': 'Yes. Website Health Audit, Tech Stack Detection and Broken Link Finder accept either a bare domain name or a full address that starts with https.'},
-    {'question': 'Why do some calls take longer?', 'answer': 'Broken Link Finder and OCR stop at a time budget (time_budget, default 15 s, max 25 s) and return what they finished, marked truncated = true. The other endpoints usually answer in a few seconds.'},
+    {'question': 'Why do some calls take longer?', 'answer': 'Broken Link Finder and OCR stop at a time budget (time_budget, default 10 s, max 25 s) and return what they finished, marked truncated = true. The other endpoints usually answer in a few seconds.'},
     {'question': 'Which OCR languages are supported?', 'answer': 'English (eng), Hebrew (heb), Arabic (ara), German (deu), French (fra) and Spanish (spa). Pass them comma-separated in the languages parameter. Right-to-left text is fixed automatically.'},
     {'question': 'Can it access private or internal addresses?', 'answer': 'No. Only public websites are checked; private, local and internal addresses are blocked.'},
     {'question': 'Does it respect robots.txt?', 'answer': 'Yes. Links blocked by robots.txt or by the target site are reported as blocked, not as broken.'},

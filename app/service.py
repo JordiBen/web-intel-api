@@ -93,7 +93,7 @@ def _budget_left(t0: float, budget: float, floor: float = 4.0) -> float:
 async def broken_links(req: LinksIn) -> dict[str, Any]:
     t0 = time.monotonic()
     async with HEAVY:
-        budget = _budget_left(t0, req.time_budget)
+        budget = _budget_left(t0, req.time_budget) - 1.0  # margin for cancellation, report and response
         opts = CrawlOptions(max_pages=req.max_pages, max_depth=5, check_external=req.check_external,
                             check_resources=req.check_resources, respect_robots=True, concurrency=5,
                             timeout_s=8, link_timeout_s=5, check_concurrency=20, max_links=req.max_links,
@@ -136,7 +136,7 @@ async def pdf_extract(req: PdfIn) -> dict[str, Any]:
                 raise UserInputError(f'download failed: {type(e).__name__}') from e
             except (DocumentError, ValueError) as e:
                 raise UserInputError(str(e)) from e
-        opts.deadline = max(slot + budget - 0.5, time.monotonic() + 1.0)  # budget covers download + extraction
+        opts.deadline = max(slot + budget - 1.0, time.monotonic() + 1.0)  # budget covers download + extraction
         try:
             pages = await asyncio.to_thread(lambda: list(iter_pages(data, opts)))
         except (DocumentError, ValueError) as e:
