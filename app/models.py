@@ -36,6 +36,9 @@ class LinksIn(UrlIn):
     check_external: bool = True
     check_resources: bool = Field(False, description='Also check images, scripts and stylesheets')
     include_ok: bool = Field(False, description='Also return working links')
+    max_links: int = Field(100, ge=1, le=500, description='Maximum number of links to check (default 100, max 500)')
+    time_budget: int = Field(15, ge=5, le=25, description='Time budget in seconds (default 15). When reached, the '
+                             'links checked so far are returned with summary.truncated = true')
 
 
 class PdfIn(BaseModel):
@@ -46,3 +49,5 @@ class PdfIn(BaseModel):
     output: Literal['markdown', 'text'] = 'markdown'
     max_pages: int = Field(20, ge=1, le=20)
     extract_tables: bool = True
+    time_budget: int = Field(15, ge=5, le=25, description='Time budget in seconds (default 15). Pages not processed in '
+                             'time are returned as skipped, with timeBudgetExceeded = true and truncated = true')

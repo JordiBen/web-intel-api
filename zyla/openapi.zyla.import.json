@@ -522,7 +522,7 @@
             "description": "Plan quota or rate limit reached"
           }
         },
-        "description": "Crawls up to 50 pages of a website and reports every broken link (404, 5xx, DNS errors, timeouts) with the page and anchor text where it was found. 'blocked' means the target refused automated checks (e.g. 403 from a bot wall), not that it is broken. Respects robots.txt. Typical time: 10-100 s depending on max_pages."
+        "description": "Crawls up to 50 pages of a website and reports every broken link (404, 5xx, DNS errors, timeouts) with the page and anchor text where it was found. 'blocked' means the target refused automated checks (e.g. 403 from a bot wall), not that it is broken. Respects robots.txt. Answers within time_budget seconds (default 15): when the budget or max_links (default 100) is reached, the links checked so far are returned with truncated = true."
       }
     },
     "/v1/pdf-extract": {

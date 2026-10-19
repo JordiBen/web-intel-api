@@ -6,6 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY engines ./engines
-ENV PORT=8000 PYTHONUNBUFFERED=1
+# OMP_THREAD_LIMIT=1: Tesseract's OpenMP threads busy-wait and are 2-3x slower on a throttled 0.1-CPU instance
+ENV PORT=8000 PYTHONUNBUFFERED=1 OMP_THREAD_LIMIT=1
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*'"]

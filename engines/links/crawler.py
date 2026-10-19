@@ -37,6 +37,12 @@ class CrawlOptions:
     timeout_s: float = 15.0
     include_subdomains: bool = False
     allow_private: bool = False  # tests only
+    max_links: int | None = None        # cap on link/resource checks (pages crawled are bounded by max_pages)
+    time_budget_s: float | None = None  # overall wall-clock budget; on expiry return partial results (truncated)
+    link_timeout_s: float | None = None # per-link check timeout (defaults to timeout_s)
+    check_concurrency: int | None = None
+    per_host_concurrency: int = 2
+    host_first_batch: int | None = None  # check at most this many links per host before other hosts get a turn
 
 
 @dataclass
@@ -113,7 +119,7 @@ class LinkChecker:
         self.cache: dict[str, dict[str, Any]] = {}
         self.locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         # be polite: at most 2 parallel checks per host (avoids 429s from e.g. github.com)
-        self.host_sems: dict[str, asyncio.Semaphore] = defaultdict(lambda: asyncio.Semaphore(2))
+        self.host_sems: dict[str, asyncio.Semaphore] = defaultdict(lambda: asyncio.Semaphore(opts.per_host_concurrency))
         self.host_429: dict[str, int] = defaultdict(int)
 
     async def check(self, url: str) -> dict[str, Any]:
@@ -140,11 +146,16 @@ class LinkChecker:
 
     async def _check(self, url: str) -> dict[str, Any]:
         started = time.perf_counter()
+        to = self.opts.link_timeout_s or self.opts.timeout_s
+        timeout = httpx.Timeout(to, connect=min(to, 4.0))
         try:
             await assert_public_url(url, allow_private=self.opts.allow_private)
-            r = await self.client.head(url, follow_redirects=True)
-            if r.status_code >= 400:  # many servers mishandle HEAD; confirm with GET
-                async with self.client.stream('GET', url, follow_redirects=True) as r2:
+            try:
+                r = await self.client.head(url, follow_redirects=True, timeout=timeout)
+            except (httpx.RemoteProtocolError, httpx.ReadError):
+                r = None  # some servers drop HEAD; retry with GET below
+            if r is None or r.status_code >= 400:  # many servers mishandle HEAD; confirm with GET (headers only)
+                async with self.client.stream('GET', url, follow_redirects=True, timeout=timeout) as r2:
                     r = r2
             status, err = r.status_code, None
             final = str(r.url)
@@ -191,6 +202,17 @@ async def crawl(start_url: str, opts: CrawlOptions, client: httpx.AsyncClient,
     origin = '{0.scheme}://{0.netloc}'.format(urlsplit(start))
     robots = await load_robots(client, origin) if opts.respect_robots else None
 
+    t0 = time.monotonic()
+    deadline = t0 + opts.time_budget_s if opts.time_budget_s else None
+    # stop starting new page fetches after half of the budget so link checks get the rest
+    crawl_deadline = t0 + opts.time_budget_s * 0.5 if opts.time_budget_s else None
+    truncated: set[str] = set()
+    scheduled = [0]
+
+    def remaining(until: float | None = None) -> float | None:
+        until = until if until is not None else deadline
+        return None if until is None else max(0.0, until - time.monotonic())
+
     checker = LinkChecker(client, opts)
     links: dict[str, LinkInfo] = {}
     pages: list[dict[str, Any]] = []
@@ -209,6 +231,9 @@ async def crawl(start_url: str, opts: CrawlOptions, client: httpx.AsyncClient,
     async def fetch_page(url: str, depth: int) -> None:
         async with sem:
             if stop.is_set() or crawled[0] >= opts.max_pages:
+                return
+            if crawl_deadline is not None and time.monotonic() >= crawl_deadline:
+                truncated.add('time_budget')
                 return
             if not allowed(url):
                 pages.append({'url': url, 'status': None, 'skipped': 'robots.txt'})
@@ -245,7 +270,8 @@ async def crawl(start_url: str, opts: CrawlOptions, client: httpx.AsyncClient,
             if on_page is not None and not await on_page(url):
                 stop.set()
                 return
-            for link_url, rtype, text in extract_links(r.text, str(r.url), opts.check_resources):
+            found = await asyncio.to_thread(extract_links, r.text, str(r.url), opts.check_resources)
+            for link_url, rtype, text in found:
                 internal = is_internal(link_url, root_host, opts.include_subdomains)
                 info = links.get(link_url)
                 if info is None:
@@ -259,11 +285,34 @@ async def crawl(start_url: str, opts: CrawlOptions, client: httpx.AsyncClient,
                     queue.put_nowait((link_url, depth + 1, url))
                 elif (not internal and opts.check_external) or (internal and rtype != 'link'):
                     if link_url not in checker.cache:
-                        t = asyncio.create_task(_bounded_check(link_url))
-                        pending_checks.add(t)
-                        t.add_done_callback(pending_checks.discard)
+                        schedule_check(link_url)
 
-    check_sem = asyncio.Semaphore(max(2, opts.concurrency * 2))
+    check_sem = asyncio.Semaphore(opts.check_concurrency or max(2, opts.concurrency * 2))
+    check_requested: set[str] = set()
+    per_host: dict[str, int] = defaultdict(int)
+    deferred: list[str] = []  # links to hosts that already had their first batch (e.g. 60 github.com links)
+
+    def schedule_check(u: str, defer_ok: bool = True) -> bool:
+        if u in check_requested:
+            return True
+        host = urlsplit(u).hostname or ''
+        if defer_ok and opts.host_first_batch and per_host[host] >= opts.host_first_batch:
+            deferred.append(u)
+            check_requested.add(u)
+            return True
+        if opts.max_links is not None and scheduled[0] >= opts.max_links:
+            truncated.add('max_links')
+            return False
+        per_host[host] += 1
+        if opts.max_links is not None and scheduled[0] >= opts.max_links:
+            truncated.add('max_links')
+            return False
+        check_requested.add(u)
+        scheduled[0] += 1
+        t = asyncio.create_task(_bounded_check(u))
+        pending_checks.add(t)
+        t.add_done_callback(pending_checks.discard)
+        return True
 
     async def _bounded_check(u: str) -> None:
         async with check_sem:
@@ -280,22 +329,45 @@ async def crawl(start_url: str, opts: CrawlOptions, client: httpx.AsyncClient,
             if queue.empty() or crawled[0] >= opts.max_pages:
                 break
             continue
-        await asyncio.wait(in_flight, return_when=asyncio.FIRST_COMPLETED)
+        await asyncio.wait(in_flight, return_when=asyncio.FIRST_COMPLETED, timeout=remaining(crawl_deadline))
         if crawled[0] >= opts.max_pages:
             break
+        if crawl_deadline is not None and time.monotonic() >= crawl_deadline:
+            if in_flight or not queue.empty():
+                truncated.add('time_budget')
+            break
     if in_flight:
-        await asyncio.gather(*in_flight, return_exceptions=True)
+        done, not_done = await asyncio.wait(in_flight, timeout=remaining())
+        for t in not_done:
+            t.cancel()
+            truncated.add('time_budget')
+        if not_done:
+            await asyncio.gather(*not_done, return_exceptions=True)
     # internal links that were queued but never fetched (page limit) still get a status check
     for u, info in links.items():
         if info.internal and not allowed(u):
             continue  # never touch URLs the site disallows for crawlers
         if u not in checker.cache and (info.internal or opts.check_external):
-            t = asyncio.create_task(_bounded_check(u))
-            pending_checks.add(t)
+            if not schedule_check(u):
+                break
+    for u in deferred:  # hosts with many links get their remaining checks last
+        check_requested.discard(u)
+        if not schedule_check(u, defer_ok=False):
+            break
     if pending_checks:
-        await asyncio.gather(*list(pending_checks), return_exceptions=True)
+        tasks = list(pending_checks)
+        done, not_done = await asyncio.wait(tasks, timeout=remaining())
+        if not_done:
+            truncated.add('time_budget')
+            for t in not_done:
+                t.cancel()
+            await asyncio.gather(*not_done, return_exceptions=True)
+    if not truncated and not queue.empty() and crawled[0] < opts.max_pages and deadline is not None \
+            and time.monotonic() >= deadline:
+        truncated.add('time_budget')
     return {'pages': pages, 'links': links, 'results': checker.cache, 'stoppedEarly': stop.is_set(),
-            'robotsTxtUsed': robots is not None}
+            'robotsTxtUsed': robots is not None, 'truncated': bool(truncated),
+            'truncatedReasons': sorted(truncated), 'elapsedMs': round((time.monotonic() - t0) * 1000)}
 
 
 def build_report(crawl_result: dict[str, Any], include_ok: bool = False) -> tuple[list[dict], dict]:
@@ -318,5 +390,10 @@ def build_report(crawl_result: dict[str, Any], include_ok: bool = False) -> tupl
                'pagesSkippedByRobots': sum(1 for p in crawl_result['pages'] if p.get('skipped')),
                'linksChecked': sum(v for k, v in counts.items() if k != 'skipped'), 'broken': counts['broken'], 'blocked': counts['blocked'],
                'ok': counts['ok'], 'stoppedEarly': crawl_result['stoppedEarly'],
-               'robotsTxtUsed': crawl_result['robotsTxtUsed']}
+               'robotsTxtUsed': crawl_result['robotsTxtUsed'],
+               'linksFound': len(crawl_result['links']),
+               'linksUnchecked': sum(1 for u in crawl_result['links'] if u not in crawl_result['results']),
+               'truncated': crawl_result.get('truncated', False),
+               'truncatedReasons': crawl_result.get('truncatedReasons', []),
+               'elapsedMs': crawl_result.get('elapsedMs')}
     return rows, summary

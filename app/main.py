@@ -24,6 +24,7 @@ import hmac
 import re
 import logging
 import os
+import time
 from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
@@ -275,10 +276,21 @@ def create_app() -> FastAPI:
         async def _start_keepalive() -> None:
             app.state.keepalive_task = asyncio.create_task(keepalive.run())
 
+    @app.middleware('http')
+    async def _timing(request: Request, call_next):
+        t = time.perf_counter()
+        response = await call_next(request)
+        if request.url.path.startswith(('/v1/', '/x402/')):
+            log.info('timing %s %s -> %s in %d ms', request.method, request.url.path, response.status_code,
+                     (time.perf_counter() - t) * 1000)
+        return response
+
     @app.get('/', include_in_schema=False)
     async def root() -> RedirectResponse:
         return RedirectResponse('/docs')
 
+    @app.head('/health', include_in_schema=False)  # uptime monitors often probe with HEAD
+    @app.head('/healthz', include_in_schema=False)
     @app.get('/health', tags=['meta'])
     @app.get('/healthz', include_in_schema=False)
     async def healthz() -> dict:

@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import io
 import re
+import time
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Iterator
 
 import httpx
@@ -30,6 +32,9 @@ class ExtractOptions:
     dpi: int = 300
     max_bytes: int = MAX_BYTES_DEFAULT
     allow_private: bool = False
+    deadline: float | None = None       # time.monotonic() value; OCR/pages past it are skipped (partial result)
+    max_image_pixels: int | None = None # downscale images/rendered pages above this many pixels before OCR
+    state: dict = field(default_factory=dict)  # out: {'timeBudgetExceeded': bool}
 
 
 class DocumentError(Exception):
@@ -119,12 +124,31 @@ def table_to_markdown(rows: list[list[Any]]) -> str:
 
 # ------------------------------------------------------------------ OCR
 
-def ocr_image(img: Image.Image, langs: tuple[str, ...]) -> tuple[str, float | None]:
+class OcrTimeout(Exception):
+    pass
+
+
+def _limit_pixels(img: Image.Image, max_pixels: int | None) -> Image.Image:
+    if max_pixels and img.width * img.height > max_pixels:
+        f = (max_pixels / (img.width * img.height)) ** 0.5
+        img = img.resize((max(1, int(img.width * f)), max(1, int(img.height * f))), Image.LANCZOS)
+    return img
+
+
+def ocr_image(img: Image.Image, langs: tuple[str, ...], timeout: float | None = None,
+              max_pixels: int | None = None) -> tuple[str, float | None]:
     img = ImageOps.exif_transpose(img)
     if img.mode not in ('L', 'RGB'):
         img = img.convert('RGB')
+    img = _limit_pixels(img, max_pixels).convert('L')  # grayscale: smaller temp file, same accuracy
     lang = '+'.join(langs)
-    data = pytesseract.image_to_data(img, lang=lang, config='--psm 3', output_type=pytesseract.Output.DICT)
+    try:
+        data = pytesseract.image_to_data(img, lang=lang, config='--psm 3', output_type=pytesseract.Output.DICT,
+                                         timeout=timeout or 0)
+    except RuntimeError as e:  # pytesseract kills tesseract and raises RuntimeError on timeout
+        if 'timeout' in str(e).lower():
+            raise OcrTimeout() from e
+        raise
     # Rebuild text from a single Tesseract pass: group words by (block, paragraph, line).
     lines: dict[tuple[int, int, int], list[str]] = {}
     confs: list[float] = []
@@ -150,14 +174,41 @@ def ocr_image(img: Image.Image, langs: tuple[str, ...]) -> tuple[str, float | No
     return clean_text('\n'.join(out)), (round(sum(confs) / len(confs), 1) if confs else None)
 
 
+@lru_cache(maxsize=1)
+def _languages() -> frozenset[str]:
+    return frozenset(pytesseract.get_languages(config=''))
+
+
 def available_languages() -> set[str]:
     try:
-        return set(pytesseract.get_languages(config=''))
+        return set(_languages())
     except Exception:  # noqa: BLE001
         return set()
 
 
 # ------------------------------------------------------------------ main extraction (generator of pages)
+
+def _remaining(opts: ExtractOptions) -> float | None:
+    return None if opts.deadline is None else opts.deadline - time.monotonic()
+
+
+def _budget_page(i: int) -> dict[str, Any]:
+    return {'page': i + 1, 'method': 'skipped', 'text': '', 'tables': [], 'ocrConfidence': None,
+            'note': 'Not processed: time budget exceeded (partial result)'}
+
+
+def _ocr_or_skip(img: Image.Image, i: int, opts: ExtractOptions) -> tuple[str, float | None] | None:
+    """OCR within the remaining time budget; None when the budget is (or becomes) exhausted."""
+    rem = _remaining(opts)
+    if rem is not None and rem < 1.0:
+        opts.state['timeBudgetExceeded'] = True
+        return None
+    try:
+        return ocr_image(img, opts.languages, timeout=rem, max_pixels=opts.max_image_pixels)
+    except OcrTimeout:
+        opts.state['timeBudgetExceeded'] = True
+        return None
+
 
 def iter_pages(data: bytes, opts: ExtractOptions) -> Iterator[dict[str, Any]]:
     """Yield one dict per page: {page, method: text|ocr, text, tables, ocrConfidence}."""
@@ -171,7 +222,11 @@ def iter_pages(data: bytes, opts: ExtractOptions) -> Iterator[dict[str, Any]]:
                 yield {'page': i + 1, 'method': 'skipped', 'text': '', 'tables': [], 'ocrConfidence': None,
                        'note': 'Image has no text layer; OCR disabled by mode=text'}
                 continue
-            text, conf = ocr_image(img.copy(), opts.languages)
+            res = _ocr_or_skip(img.copy(), i, opts)
+            if res is None:
+                yield _budget_page(i)
+                continue
+            text, conf = res
             yield {'page': i + 1, 'method': 'ocr', 'text': text, 'tables': [], 'ocrConfidence': conf}
         return
 
@@ -184,6 +239,11 @@ def iter_pages(data: bytes, opts: ExtractOptions) -> Iterator[dict[str, Any]]:
         for i, page in enumerate(pdf.pages[: opts.max_pages]):
             text = ''
             tables: list[list[list[str]]] = []
+            rem = _remaining(opts)
+            if rem is not None and rem <= 0:
+                opts.state['timeBudgetExceeded'] = True
+                yield _budget_page(i)
+                continue
             if opts.mode != 'ocr':
                 text = clean_text(page.extract_text() or '')
                 if looks_visual_order(text):
@@ -193,13 +253,25 @@ def iter_pages(data: bytes, opts: ExtractOptions) -> Iterator[dict[str, Any]]:
                         tables = [t for t in page.extract_tables() if t and len(t) > 1]
                     except Exception:  # noqa: BLE001
                         tables = []
-            needs_ocr = opts.mode == 'ocr' or (opts.mode == 'auto' and len(text) < MIN_TEXT_CHARS)
+            # Fast path: a short text layer on a page without images is the whole page (e.g. a one-line PDF);
+            # OCR only pages with (almost) no text that contain images, i.e. scans.
+            has_images = bool(getattr(page, 'images', None))
+            needs_ocr = opts.mode == 'ocr' or (opts.mode == 'auto' and len(text) < MIN_TEXT_CHARS
+                                               and (not text.strip() or has_images))
             if needs_ocr:
                 if rendered is None:
                     rendered = pdfium.PdfDocument(data)
                 bitmap = rendered[i].render(scale=opts.dpi / 72)
                 img = bitmap.to_pil()
-                ocr_text, conf = ocr_image(img, opts.languages)
+                res = _ocr_or_skip(img, i, opts)
+                if res is None:
+                    if text:
+                        yield {'page': i + 1, 'method': 'text', 'text': text, 'tables': tables, 'ocrConfidence': None,
+                               'note': 'OCR skipped: time budget exceeded; text layer only'}
+                    else:
+                        yield _budget_page(i)
+                    continue
+                ocr_text, conf = res
                 if opts.mode == 'auto' and text and len(ocr_text.strip()) <= len(text.strip()) + 10:
                     # Short page whose text layer already holds everything OCR found: bill/return as text.
                     yield {'page': i + 1, 'method': 'text', 'text': text, 'tables': tables, 'ocrConfidence': None}

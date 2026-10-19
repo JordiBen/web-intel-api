@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Copy the core (Apify-independent) logic of each Actor into engines/<name>/ as importable packages.
 set -euo pipefail
+# WARNING: engines/links/crawler.py and engines/pdf/extract.py carry API-only changes (time budgets, link cap,
+# per-host fairness, OCR downscale/timeout, text-layer fast path). Port them to the Actors first, or re-apply after syncing.
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${ACTORS_DIR:-/workspace/apify/actors}
 declare -A MAP=( [health]=website-health-audit [links]=broken-link-checker [markdown]=page-to-markdown [pdf]=pdf-ocr-extractor [tech]=website-tech-detector )

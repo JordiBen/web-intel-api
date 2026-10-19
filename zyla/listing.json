@@ -613,7 +613,7 @@
     },
     {
       "question": "Why do some calls take longer?",
-      "answer": "Broken Link Finder crawls up to 50 pages and OCR processes up to 20 pages, so these calls can take 10-100 seconds. The other endpoints usually answer in a few seconds."
+      "answer": "Broken Link Finder and OCR stop at a time budget (time_budget, default 15 s, max 25 s) and return what they finished, marked truncated = true. The other endpoints usually answer in a few seconds."
     },
     {
       "question": "Which OCR languages are supported?",
